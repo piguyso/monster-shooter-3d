@@ -1040,6 +1040,9 @@
 
         monsters.forEach(m => m.takeDamage(500, false, 'player'));
         if (boss && boss.alive) boss.takeDamage(450, false, 'player');
+        bots.forEach(b => {
+          if (b.alive) b.takeDamage(500, false, 'player');
+        });
       }
 
       takeDamage(amount) {
@@ -1069,17 +1072,79 @@
     const player = new PlayerFPS();
 
     /* ==========================================================================
-       8. AI COMPANION BOTS 3D
+       8. AI COMPANION BOTS 3D (SHOOTABLE, HP BAR & RESPAWN)
        ========================================================================== */
+    function drawRoundRect(ctx, x, y, width, height, radius, fill = true, stroke = false) {
+      const r = typeof radius === 'number' ? { tl: radius, tr: radius, br: radius, bl: radius } : radius;
+      ctx.beginPath();
+      ctx.moveTo(x + r.tl, y);
+      ctx.lineTo(x + width - r.tr, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + r.tr);
+      ctx.lineTo(x + width, y + height - r.br);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - r.br, y + height);
+      ctx.lineTo(x + r.bl, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - r.bl);
+      ctx.lineTo(x, y + r.tl);
+      ctx.quadraticCurveTo(x, y, x + r.tl, y);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+
+    function createBotExplosion(pos, colorHex) {
+      const particleCount = 18;
+      const geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+      const mat = new THREE.MeshBasicMaterial({ color: colorHex });
+      const group = new THREE.Group();
+
+      const particles = [];
+      for (let i = 0; i < particleCount; i++) {
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.copy(pos).add(new THREE.Vector3(0, 1.2, 0));
+        const vel = new THREE.Vector3(
+          (Math.random() - 0.5) * 14,
+          Math.random() * 10 + 4,
+          (Math.random() - 0.5) * 14
+        );
+        group.add(mesh);
+        particles.push({ mesh, vel });
+      }
+      scene.add(group);
+
+      let life = 1.0;
+      const anim = () => {
+        life -= 0.025;
+        particles.forEach(p => {
+          p.mesh.position.addScaledVector(p.vel, 0.016);
+          p.vel.y -= 22 * 0.016;
+          p.mesh.rotation.x += 0.12;
+          p.mesh.rotation.y += 0.12;
+        });
+        if (life > 0) {
+          requestAnimationFrame(anim);
+        } else {
+          scene.remove(group);
+        }
+      };
+      anim();
+    }
+
     class BotCompanion3D {
       constructor(id, name, colorHex, initialX, initialZ) {
         this.id = id;
         this.name = name;
         this.colorHex = colorHex;
+        this.initialX = initialX;
+        this.initialZ = initialZ;
         this.score = 0;
+        this.maxHp = 100;
+        this.hp = 100;
+        this.alive = true;
+        this.radius = 1.3;
+        this.respawnTimer = 0;
         this.fireCooldown = 0;
-        this.fireRate = 0.35;
-        this.speed = 10;
+        this.fireRate = 0.38;
+        this.speed = 9.5;
 
         this.mesh = new THREE.Group();
         const bodyGeo = new THREE.BoxGeometry(0.8, 1.1, 0.5);
@@ -1104,11 +1169,178 @@
         visor.position.set(0, 2.0, 0.24);
         this.mesh.add(visor);
 
+        this.initHealthBar();
+
         this.mesh.position.set(initialX, 0, initialZ);
         scene.add(this.mesh);
       }
 
+      initHealthBar() {
+        this.hpCanvas = document.createElement('canvas');
+        this.hpCanvas.width = 256;
+        this.hpCanvas.height = 72;
+        this.hpCtx = this.hpCanvas.getContext('2d');
+
+        this.hpTexture = new THREE.CanvasTexture(this.hpCanvas);
+        this.hpTexture.minFilter = THREE.LinearFilter;
+
+        const spriteMat = new THREE.SpriteMaterial({
+          map: this.hpTexture,
+          transparent: true,
+          depthTest: true,
+          depthWrite: false
+        });
+
+        this.hpSprite = new THREE.Sprite(spriteMat);
+        this.hpSprite.position.set(0, 2.7, 0);
+        this.hpSprite.scale.set(2.8, 0.78, 1);
+        this.mesh.add(this.hpSprite);
+
+        this.updateHealthBar();
+      }
+
+      updateHealthBar() {
+        if (!this.hpCtx) return;
+        const ctx = this.hpCtx;
+        const w = this.hpCanvas.width;
+        const h = this.hpCanvas.height;
+
+        ctx.clearRect(0, 0, w, h);
+
+        const hexStr = '#' + this.colorHex.toString(16).padStart(6, '0');
+
+        // Outer Container Background
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.strokeStyle = hexStr;
+        ctx.lineWidth = 3;
+        drawRoundRect(ctx, 3, 3, w - 6, h - 6, 8, true, true);
+
+        // Header: Bot Name and Remaining HP Number
+        ctx.font = 'bold 20px Kanit, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'left';
+        ctx.fillText(this.name, 14, 27);
+
+        // Remaining HP number
+        const hpPercent = Math.max(0, Math.min(1, this.hp / this.maxHp));
+        ctx.textAlign = 'right';
+        ctx.fillStyle = hpPercent > 0.5 ? '#34d399' : (hpPercent > 0.25 ? '#fbbf24' : '#ef4444');
+        ctx.fillText(`${Math.ceil(this.hp)}/${this.maxHp} HP`, w - 14, 27);
+
+        // Health Bar Track
+        const barX = 12;
+        const barY = 38;
+        const barW = w - 24;
+        const barH = 20;
+
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.9)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        drawRoundRect(ctx, barX, barY, barW, barH, 5, true, true);
+
+        // Health Bar Fill
+        if (hpPercent > 0) {
+          const fillW = Math.max(6, barW * hpPercent);
+          const grad = ctx.createLinearGradient(barX, 0, barX + fillW, 0);
+          if (hpPercent > 0.5) {
+            grad.addColorStop(0, '#10b981');
+            grad.addColorStop(1, '#38bdf8');
+          } else if (hpPercent > 0.25) {
+            grad.addColorStop(0, '#f59e0b');
+            grad.addColorStop(1, '#fbbf24');
+          } else {
+            grad.addColorStop(0, '#dc2626');
+            grad.addColorStop(1, '#ef4444');
+          }
+          ctx.fillStyle = grad;
+          drawRoundRect(ctx, barX, barY, fillW, barH, 5, true, false);
+        }
+
+        this.hpTexture.needsUpdate = true;
+      }
+
+      takeDamage(amount, isCrit = false, shooter = 'player') {
+        if (!this.alive) return;
+
+        this.hp -= amount;
+        if (this.hp < 0) this.hp = 0;
+
+        this.updateHealthBar();
+
+        if (isCrit) {
+          sound.play('crit');
+          create3DFloatingText(`CRIT ${amount}!`, this.mesh.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#fbbf24', true);
+        } else {
+          sound.play('hit');
+          create3DFloatingText(`${amount}`, this.mesh.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#38bdf8', false);
+        }
+
+        if (shooter === 'player') {
+          triggerHitmarker();
+          gameState.stats.damageDealt += amount;
+          player.boost = Math.min(player.maxBoost, player.boost + 4);
+        }
+
+        if (this.hp <= 0 && this.alive) {
+          this.die(shooter);
+        }
+      }
+
+      die(killer) {
+        if (!this.alive) return;
+        this.alive = false;
+        this.mesh.visible = false;
+
+        // Reset points/score as requested by user
+        this.score = 0;
+        updateLiveLeaderboard();
+
+        // Explosion effect & sounds
+        createBotExplosion(this.mesh.position, this.colorHex);
+        sound.play('bossAttack');
+
+        if (killer === 'player') {
+          sound.play('victory');
+          gameState.stats.score += 250;
+          gameState.stats.kills++;
+          player.boost = Math.min(player.maxBoost, player.boost + 20);
+          create3DFloatingText(`DESTROYED ${this.name.toUpperCase()}! (+250 PTS)`, this.mesh.position.clone().add(new THREE.Vector3(0, 2.4, 0)), '#f59e0b', true);
+          create3DFloatingText(`แต้มบอทถูกรีเซ็ตเป็น 0!`, this.mesh.position.clone().add(new THREE.Vector3(0, 1.8, 0)), '#ef4444', true);
+        } else {
+          create3DFloatingText(`${this.name} DESTROYED! (แต้มรีเซ็ตเป็น 0)`, this.mesh.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#ef4444', true);
+        }
+
+        // Respawn countdown timer
+        this.respawnTimer = 2.5;
+      }
+
+      respawn() {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 14 + Math.random() * 16;
+        const x = Math.cos(angle) * dist;
+        const z = Math.sin(angle) * dist;
+
+        this.mesh.position.set(x, 0, z);
+        this.hp = this.maxHp;
+        this.alive = true;
+        this.mesh.visible = true;
+        this.updateHealthBar();
+
+        createBotExplosion(this.mesh.position, 0x38bdf8);
+        sound.play('pickup');
+        create3DFloatingText(`${this.name} RESPAWNED!`, this.mesh.position.clone().add(new THREE.Vector3(0, 2.6, 0)), '#38bdf8', true);
+      }
+
       update(dt) {
+        // Handle respawn timer when bot is dead
+        if (!this.alive) {
+          this.respawnTimer -= dt;
+          if (this.respawnTimer <= 0) {
+            this.respawn();
+          }
+          return;
+        }
+
         if (this.fireCooldown > 0) this.fireCooldown -= dt;
 
         let target = null;
@@ -1395,14 +1627,18 @@
       update(dt) {
         if (this.attackCooldown > 0) this.attackCooldown -= dt;
 
+        let targetEntity = 'player';
         let targetPos = cameraRig.position.clone();
         let minDist = this.mesh.position.distanceTo(targetPos);
 
         bots.forEach(b => {
-          const d = this.mesh.position.distanceTo(b.mesh.position);
-          if (d < minDist) {
-            minDist = d;
-            targetPos = b.mesh.position.clone();
+          if (b.alive) {
+            const d = this.mesh.position.distanceTo(b.mesh.position);
+            if (d < minDist) {
+              minDist = d;
+              targetPos = b.mesh.position.clone();
+              targetEntity = b;
+            }
           }
         });
 
@@ -1416,14 +1652,21 @@
             this.mesh.position.addScaledVector(dir, this.speed * dt);
           } else if (this.attackCooldown <= 0) {
             const shootOrigin = this.mesh.position.clone().add(new THREE.Vector3(0, 1.2, 0));
-            const shootDir = new THREE.Vector3().subVectors(cameraRig.position.clone().add(new THREE.Vector3(0, 1.2, 0)), shootOrigin).normalize();
+            const targetAim = (targetEntity === 'player') 
+              ? cameraRig.position.clone().add(new THREE.Vector3(0, 1.2, 0))
+              : targetEntity.mesh.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+            const shootDir = new THREE.Vector3().subVectors(targetAim, shootOrigin).normalize();
             bullets.push(new Bullet3D(shootOrigin, shootDir, 'spitter', 12, false, 0x10b981));
             this.attackCooldown = 1.8;
           }
         } else {
           this.mesh.position.addScaledVector(dir, this.speed * dt);
           if (minDist < this.radius + 1.2 && this.attackCooldown <= 0) {
-            player.takeDamage(this.type === 'brute' ? 22 : 12);
+            if (targetEntity === 'player') {
+              player.takeDamage(this.type === 'brute' ? 22 : 12);
+            } else if (targetEntity && targetEntity.takeDamage) {
+              targetEntity.takeDamage(this.type === 'brute' ? 22 : 12, false, 'monster');
+            }
             this.attackCooldown = 0.9;
           }
         }
@@ -1709,6 +1952,7 @@
         if (!b.alive) return;
 
         if (b.shooter !== 'boss' && b.shooter !== 'spitter') {
+          // Check collision with monsters
           for (const m of monsters) {
             if (m.alive) {
               const dist = b.position.distanceTo(m.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)));
@@ -1720,6 +1964,7 @@
             }
           }
 
+          // Check collision with stage boss
           if (b.alive && boss && boss.alive) {
             const dist = b.position.distanceTo(boss.mesh.position.clone().add(new THREE.Vector3(0, 4, 0)));
             if (dist < boss.radius + b.radius) {
@@ -1727,11 +1972,40 @@
               b.destroy();
             }
           }
+
+          // Check collision with bots (Player can shoot bots!)
+          if (b.alive) {
+            for (const bot of bots) {
+              if (bot.alive && b.shooter !== bot.id) {
+                const botCenter = bot.mesh.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+                const dist = b.position.distanceTo(botCenter);
+                if (dist < bot.radius + b.radius) {
+                  bot.takeDamage(b.damage, b.isCrit, b.shooter);
+                  b.destroy();
+                  break;
+                }
+              }
+            }
+          }
         } else {
+          // Projectiles from Spitter or Boss
           const dist = b.position.distanceTo(cameraRig.position.clone().add(new THREE.Vector3(0, 1.4, 0)));
           if (dist < 1.4 + b.radius) {
             player.takeDamage(b.damage);
             b.destroy();
+            return;
+          }
+
+          for (const bot of bots) {
+            if (bot.alive) {
+              const botCenter = bot.mesh.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+              const distBot = b.position.distanceTo(botCenter);
+              if (distBot < bot.radius + b.radius) {
+                bot.takeDamage(b.damage, false, b.shooter);
+                b.destroy();
+                break;
+              }
+            }
           }
         }
       });
@@ -1960,8 +2234,14 @@
       gameState.stats = { score: 0, kills: 0, damageDealt: 0, damageTaken: 0, critHits: 0 };
 
       player.reset();
-      bots[0].score = 0;
-      bots[1].score = 0;
+      bots.forEach(b => {
+        b.score = 0;
+        b.hp = b.maxHp;
+        b.alive = true;
+        b.mesh.visible = true;
+        b.mesh.position.set(b.initialX, 0, b.initialZ);
+        b.updateHealthBar();
+      });
 
       monsters.forEach(m => m.destroy());
       monsters = [];
