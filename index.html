@@ -1,0 +1,2191 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Monster Shooter 3D - Multiplayer Bot Competition & Costumes (FPS)</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js 3D WebGL Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts: Kanit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            kanit: ['Kanit', 'sans-serif'],
+          },
+          colors: {
+            game: {
+              dark: '#060913',
+              panel: 'rgba(15, 23, 42, 0.85)',
+              accent: '#38bdf8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    body {
+      font-family: 'Kanit', sans-serif;
+      background-color: #04060d;
+      color: #f8fafc;
+      overflow: hidden;
+    }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 12px 30px 0 rgba(0, 0, 0, 0.5);
+    }
+    .glass-card-glow {
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);
+    }
+    /* FPS Crosshair */
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 25;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ch-dot {
+      width: 4px;
+      height: 4px;
+      background: #38bdf8;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #38bdf8;
+    }
+    .ch-line {
+      position: absolute;
+      background: rgba(56, 189, 248, 0.8);
+      box-shadow: 0 0 4px #38bdf8;
+    }
+    .ch-top { width: 2px; height: 10px; top: -14px; }
+    .ch-bottom { width: 2px; height: 10px; bottom: -14px; }
+    .ch-left { height: 2px; width: 10px; left: -14px; }
+    .ch-right { height: 2px; width: 10px; right: -14px; }
+    .hitmarker {
+      animation: hitFlash 0.15s ease-out;
+    }
+    @keyframes hitFlash {
+      0% { transform: scale(1.6); filter: brightness(2) drop-shadow(0 0 8px #f59e0b); }
+      100% { transform: scale(1); filter: none; }
+    }
+    .btn-nuke-active {
+      animation: nukeGlow 0.8s ease-in-out infinite alternate;
+    }
+    @keyframes nukeGlow {
+      from { box-shadow: 0 0 15px #f59e0b, 0 0 30px #ef4444; }
+      to { box-shadow: 0 0 30px #fbbf24, 0 0 50px #dc2626; transform: scale(1.05); }
+    }
+  </style>
+</head>
+<body class="w-screen h-screen m-0 p-0 relative bg-game-dark flex flex-col items-center justify-center">
+
+  <!-- ================= 3D CANVAS CONTAINER ================= -->
+  <div id="game-container" class="relative w-full h-full overflow-hidden">
+    <div id="webgl-canvas-container" class="w-full h-full block"></div>
+
+    <!-- FPS Crosshair Overlay -->
+    <div id="crosshair" class="hidden">
+      <div id="ch-center" class="ch-dot"></div>
+      <div class="ch-line ch-top"></div>
+      <div class="ch-line ch-bottom"></div>
+      <div class="ch-line ch-left"></div>
+      <div class="ch-line ch-right"></div>
+    </div>
+
+    <!-- Pointer Lock Prompt Notice -->
+    <div id="click-to-focus-notice" class="hidden absolute top-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full glass-card-glow text-xs font-bold text-sky-300 z-30 pointer-events-none flex items-center gap-2">
+      <i class="fa-solid fa-mouse text-amber-400"></i> คลิกหน้าจอเพื่อล็อคเมาส์เล็ง 3D (Click to Lock Mouse)
+    </div>
+
+    <!-- TOP HUD OVERLAY (Active during 3D Game) -->
+    <div id="game-hud" class="hidden absolute top-0 left-0 w-full p-2 md:p-4 pointer-events-none flex justify-between items-start z-20">
+      
+      <!-- Left: Player Status Vitals -->
+      <div class="pointer-events-auto flex flex-col gap-2 glass-card p-3 rounded-2xl w-60 sm:w-72">
+        <div class="flex items-center justify-between text-xs font-semibold">
+          <div class="flex items-center gap-2">
+            <span id="hud-player-dot" class="w-3.5 h-3.5 rounded-full border border-white/60 bg-sky-500 shadow-md"></span>
+            <span class="text-sm font-bold tracking-wide text-white">ผู้เล่น (FPS 3D)</span>
+          </div>
+          <span id="hud-dash-badge" class="px-2 py-0.5 rounded-full bg-slate-800 text-[11px] font-mono text-sky-400 border border-sky-500/30">
+            DASH: READY
+          </span>
+        </div>
+
+        <!-- HP Bar -->
+        <div class="w-full">
+          <div class="flex justify-between text-[11px] mb-0.5 font-medium">
+            <span class="text-emerald-400"><i class="fa-solid fa-heart mr-1"></i> HP</span>
+            <span id="hud-hp-text" class="text-white font-mono">100/100</span>
+          </div>
+          <div class="w-full bg-slate-800/80 rounded-full h-2.5 overflow-hidden p-0.5 border border-slate-700">
+            <div id="hud-hp-bar" class="bg-gradient-to-r from-red-500 via-emerald-400 to-emerald-300 h-full rounded-full transition-all duration-150 w-full"></div>
+          </div>
+        </div>
+
+        <!-- Shield Bar -->
+        <div class="w-full">
+          <div class="flex justify-between text-[11px] mb-0.5 font-medium">
+            <span class="text-cyan-400"><i class="fa-solid fa-shield-halved mr-1"></i> เกราะ (SHIELD)</span>
+            <span id="hud-shield-text" class="text-white font-mono">50/50</span>
+          </div>
+          <div class="w-full bg-slate-800/80 rounded-full h-2 overflow-hidden p-0.5 border border-slate-700">
+            <div id="hud-shield-bar" class="bg-gradient-to-r from-sky-500 to-cyan-300 h-full rounded-full transition-all duration-150 w-full"></div>
+          </div>
+        </div>
+
+        <!-- Boost Gauge -->
+        <div class="w-full">
+          <div class="flex justify-between text-[11px] mb-0.5 font-medium">
+            <span class="text-amber-400"><i class="fa-solid fa-bolt mr-1"></i> BOOST (ไม้ตาย Q)</span>
+            <span id="hud-boost-text" class="text-white font-mono">0%</span>
+          </div>
+          <div class="w-full bg-slate-800/80 rounded-full h-2 overflow-hidden p-0.5 border border-slate-700">
+            <div id="hud-boost-bar" class="bg-gradient-to-r from-amber-500 to-yellow-300 h-full rounded-full transition-all duration-100 w-0"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center: Wave & Enemies Tracker -->
+      <div class="pointer-events-auto flex flex-col items-center gap-1.5">
+        <div id="hud-wave-badge" class="glass-card-glow px-4 py-1.5 rounded-full flex items-center gap-2.5 shadow-lg border border-sky-400/40">
+          <i class="fa-solid fa-skull-crossbones text-rose-400 text-sm"></i>
+          <span id="hud-wave-title" class="font-extrabold text-sm md:text-base tracking-wider text-sky-200">WAVE 1: MONSTER HORDE 3D</span>
+        </div>
+        <div class="glass-card px-3 py-1 rounded-full text-xs font-semibold text-slate-300 flex items-center gap-2">
+          <span>ศัตรูคงเหลือ:</span>
+          <span id="hud-enemies-left" class="text-rose-400 font-mono font-bold text-sm">20</span>
+        </div>
+        
+        <!-- Boss HP Bar (Visible only in Wave 2) -->
+        <div id="hud-boss-container" class="hidden flex-col items-center w-72 sm:w-96 glass-card p-2 rounded-xl border border-rose-500/40">
+          <div class="flex justify-between w-full text-xs font-bold text-rose-400 mb-1">
+            <span><i class="fa-solid fa-crown mr-1 text-amber-400"></i> LORD DEMON 3D (BOSS)</span>
+            <span id="hud-boss-hp-text" class="font-mono text-white">1200 / 1200</span>
+          </div>
+          <div class="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-rose-500/50">
+            <div id="hud-boss-hp-bar" class="h-full bg-gradient-to-r from-rose-600 via-red-500 to-amber-500 rounded-full transition-all duration-100 w-full"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Real-time Leaderboard & Settings Toggle -->
+      <div class="pointer-events-auto flex flex-col items-end gap-2">
+        <div class="flex items-center gap-2">
+          <button id="btn-sound-toggle" class="glass-card hover:bg-slate-700/80 text-white w-9 h-9 rounded-xl flex items-center justify-center transition shadow">
+            <i id="sound-icon" class="fa-solid fa-volume-high text-sky-400 text-sm"></i>
+          </button>
+          <button id="btn-pause" class="glass-card hover:bg-slate-700/80 text-white px-3 h-9 rounded-xl flex items-center gap-2 text-xs font-bold transition shadow">
+            <i class="fa-solid fa-pause text-amber-400"></i>
+            <span class="hidden sm:inline">หยุดเกม (ESC)</span>
+          </button>
+        </div>
+
+        <!-- Live Scoreboard -->
+        <div class="glass-card p-2.5 rounded-2xl w-48 sm:w-56 shadow-lg border border-slate-700">
+          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center justify-between border-b border-slate-700/80 pb-1">
+            <span><i class="fa-solid fa-trophy text-amber-400 mr-1"></i> แข่งขันเรียลไทม์ 3D</span>
+            <span class="text-[10px] text-sky-400 animate-pulse">LIVE</span>
+          </div>
+          <div id="hud-leaderboard-list" class="flex flex-col gap-1 text-xs"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D Floating Damage Text Container -->
+    <div id="damage-text-layer" class="absolute inset-0 pointer-events-none z-15 overflow-hidden"></div>
+
+    <!-- MOBILE FPS TOUCH CONTROLS -->
+    <div id="mobile-controls" class="hidden md:hidden absolute bottom-4 left-0 w-full px-4 pointer-events-none justify-between items-end z-20">
+      <!-- Joystick Zone on Left for Movement -->
+      <div id="touch-joystick-zone" class="pointer-events-auto relative w-28 h-28 rounded-full border-2 border-dashed border-sky-400/40 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center">
+        <div id="touch-joystick-knob" class="w-12 h-12 rounded-full bg-sky-500/80 border border-white shadow-lg pointer-events-none"></div>
+      </div>
+
+      <!-- Action Buttons on Right -->
+      <div class="pointer-events-auto flex items-center gap-3">
+        <button id="btn-mobile-fire" class="w-16 h-16 rounded-full glass-card-glow border-2 border-rose-500 flex flex-col items-center justify-center text-white active:scale-95 transition shadow-lg">
+          <i class="fa-solid fa-crosshairs text-rose-400 text-xl"></i>
+          <span class="text-[9px] font-bold mt-0.5">FIRE</span>
+        </button>
+        <button id="btn-mobile-dash" class="w-14 h-14 rounded-full glass-card-glow border border-sky-400 flex flex-col items-center justify-center text-white active:scale-95 transition shadow-lg">
+          <i class="fa-solid fa-angles-right text-sky-300 text-lg"></i>
+          <span class="text-[9px] font-bold mt-0.5">DASH</span>
+        </button>
+        <button id="btn-mobile-nuke" class="w-14 h-14 rounded-full glass-card border border-amber-500 flex flex-col items-center justify-center text-amber-300 active:scale-95 transition shadow-lg opacity-60">
+          <i class="fa-solid fa-atom text-xl"></i>
+          <span class="text-[9px] font-extrabold">NUKE (Q)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LOBBY / START MODAL ================= -->
+  <div id="modal-lobby" class="absolute inset-0 z-40 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+    <div class="glass-card-glow max-w-2xl w-full p-6 sm:p-8 rounded-3xl flex flex-col items-center text-center relative border border-sky-500/40 shadow-2xl">
+      
+      <!-- Badge -->
+      <div class="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-sky-500/20 border border-sky-400/40 text-sky-300 text-xs font-bold uppercase tracking-wider mb-2">
+        <i class="fa-solid fa-cube"></i> Three.js 3D First-Person Shooter (FPS)
+      </div>
+
+      <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-400 via-indigo-300 to-purple-400">
+        MONSTER SHOOTER 3D
+      </h1>
+      <p class="text-slate-300 text-sm sm:text-base font-normal mt-1 mb-6">
+        First-Person Shooter • Multiplayer Bot Competition & 3D Costumes
+      </p>
+
+      <!-- 3D Weapon / Character Preview Area -->
+      <div class="w-full flex flex-col sm:flex-row items-center justify-center gap-6 my-2 bg-slate-900/60 p-4 rounded-2xl border border-slate-700/80">
+        <!-- 3D Preview Canvas -->
+        <div class="flex flex-col items-center">
+          <div class="relative w-36 h-36 rounded-2xl bg-gradient-to-b from-slate-800 to-slate-950 border-2 border-sky-500/50 shadow-inner flex items-center justify-center overflow-hidden">
+            <canvas id="previewCanvas" width="144" height="144" class="block"></canvas>
+            <div class="absolute bottom-1 text-[10px] text-sky-400 tracking-wider font-mono">3D WEAPON PREVIEW</div>
+          </div>
+        </div>
+
+        <!-- Color Selectors -->
+        <div class="flex flex-col items-center sm:items-start">
+          <span class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-palette text-amber-400"></i> เลือกสีคอสตูมปืน 3 มิติ (5 สี)
+          </span>
+          <div id="costume-buttons-container" class="flex flex-wrap gap-2.5 justify-center sm:justify-start"></div>
+          <div class="mt-2.5 text-xs text-sky-400 font-medium" id="costume-name-label">
+            สีปัจจุบัน: Classic Azure
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Stats Callout -->
+      <div class="grid grid-cols-3 gap-2 w-full my-4 text-xs font-medium text-slate-300">
+        <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800 flex flex-col items-center">
+          <span class="text-emerald-400 font-bold text-sm">100 HP + 50 S</span>
+          <span class="text-[11px] text-slate-400">เกราะรับดาเมจก่อน</span>
+        </div>
+        <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800 flex flex-col items-center">
+          <span class="text-amber-400 font-bold text-sm">CRIT 59% (x2.45)</span>
+          <span class="text-[11px] text-slate-400">ยิงติดคริติคอลจัดเต็ม</span>
+        </div>
+        <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800 flex flex-col items-center">
+          <span class="text-purple-400 font-bold text-sm">2 AI BOTS 3D</span>
+          <span class="text-[11px] text-slate-400">แข่งคะแนนเรียลไทม์</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-col sm:flex-row items-center gap-3 w-full mt-2">
+        <button id="btn-start-game" class="w-full sm:flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-extrabold text-base tracking-wider shadow-lg shadow-sky-500/30 transition duration-200 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-crosshairs"></i> ล็อคเป้าเริ่มเล่นทันที (FPS 3D)
+        </button>
+        <button id="btn-how-to-play" class="w-full sm:w-auto py-3.5 px-5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm border border-slate-700 transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-circle-question text-sky-400"></i> คู่มือการเล่น
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= HOW TO PLAY MODAL ================= -->
+  <div id="modal-help" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+    <div class="glass-card max-w-xl w-full p-6 sm:p-7 rounded-3xl flex flex-col border border-slate-700 shadow-2xl">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-700/80 mb-4">
+        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-book-open text-sky-400"></i> คู่มือการเล่น 3D FPS
+        </h2>
+        <button id="btn-close-help" class="text-slate-400 hover:text-white text-lg p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="flex flex-col gap-3 text-xs sm:text-sm text-slate-300 max-h-[60vh] overflow-y-auto pr-2">
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+          <h3 class="font-bold text-sky-400 mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-keyboard"></i> ปุ่มควบคุมมุมมองบุคคลที่หนึ่ง (FPS Controls)
+          </h3>
+          <ul class="list-disc list-inside space-y-1 text-slate-300">
+            <li><span class="font-semibold text-white">ขยับเมาส์ (Mouse Look)</span>: หันมุมมอง 360 องศา (คลิกจอเพื่อล็อคเมาส์)</li>
+            <li><span class="font-semibold text-white">W A S D</span> หรือลูกศร: เดินหน้า ถอยหลัง สไลด์ซ้าย-ขวาตามแนวสายตา</li>
+            <li><span class="font-semibold text-white">คลิกเมาส์ซ้าย</span>: ยิงกระสุนปืนพลาสมา 3D ต่อเนื่อง (มีแรงดีด Recoil)</li>
+            <li><span class="font-semibold text-white">SPACEBAR</span>: แดชพุ่งไปข้างหน้าพร้อมความเร็วสูงและเอฟเฟกต์ FOV (CD 1.2 วิ)</li>
+            <li><span class="font-semibold text-white">ปุ่ม Q</span>: ระเบิดคลื่นพลังงาน 3D Shockwave ล้างบางรอบทิศ (เมื่อ Boost 100%)</li>
+            <li><span class="font-semibold text-white">ปุ่ม ESC หรือ P</span>: หยุดเกมและปลดล็อคเมาส์</li>
+          </ul>
+        </div>
+
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+          <h3 class="font-bold text-amber-400 mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-crosshairs"></i> กฎการต่อสู้ 2 Wave & บอส 3D
+          </h3>
+          <ul class="list-disc list-inside space-y-1 text-slate-300">
+            <li><span class="font-semibold text-white">Wave 1:</span> กำจัดฝูงมอนสเตอร์ไซเบอร์ 3D จำนวน 20 ตัว (+100 แต้มต่อตัว)</li>
+            <li><span class="font-semibold text-white">Wave 2:</span> ดวลมหาบอส <span class="text-rose-400 font-bold">Lord Demon 3D</span> ปีกกระพือได้ HP 1,200 (+1,500 แต้ม)</li>
+            <li><span class="font-semibold text-white">ไอเทม 3D ลอยได้ (40%):</span> กล่องเขียว (+25 HP), โล่ฟ้า (+40 Shield), คริสตัลสายฟ้า (+35% Boost)</li>
+          </ul>
+        </div>
+
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+          <h3 class="font-bold text-purple-400 mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-robot"></i> บอท AI คู่แข่ง 3D (Bot-Alpha & Bot-Blaze)
+          </h3>
+          <p>
+            บอทไซเบอร์ 3D 2 ตัวจะร่วมลาดตระเวนและเล็งยิงมอนสเตอร์ แข่งทำคะแนนกับคุณบนตาราง Real-time Leaderboard สดๆ จงคว้าที่ 1 ให้ได้!
+          </p>
+        </div>
+      </div>
+
+      <button id="btn-help-ok" class="mt-4 w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow">
+        เข้าใจแล้ว ลุยสนามรบ 3D เลย!
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= PAUSE / SETTINGS MODAL ================= -->
+  <div id="modal-pause" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
+    <div class="glass-card max-w-sm w-full p-6 rounded-3xl flex flex-col items-center text-center border border-slate-700 shadow-2xl">
+      <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-amber-400 text-xl mb-2">
+        <i class="fa-solid fa-pause"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-white mb-1">เกมหยุดชั่วคราว</h2>
+      <p class="text-xs text-slate-400 mb-5">PAUSED & SETTINGS</p>
+
+      <!-- SFX Volume Slider -->
+      <div class="w-full bg-slate-900/70 p-3 rounded-xl border border-slate-800 mb-4 text-left">
+        <div class="flex justify-between text-xs font-semibold mb-1">
+          <span class="text-slate-300"><i class="fa-solid fa-volume-high text-sky-400 mr-1"></i> เสียงเอฟเฟกต์ (SFX Volume)</span>
+          <span id="label-volume-val" class="text-sky-400 font-mono">80%</span>
+        </div>
+        <input id="slider-sfx-volume" type="range" min="0" max="100" value="80" class="w-full accent-sky-400 cursor-pointer">
+      </div>
+
+      <div class="flex flex-col gap-2.5 w-full">
+        <button id="btn-resume-game" class="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow">
+          <i class="fa-solid fa-play mr-1.5"></i> เล่นเกมต่อ (Resume)
+        </button>
+        <button id="btn-restart-game" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-slate-700">
+          <i class="fa-solid fa-rotate-right mr-1.5 text-amber-400"></i> เริ่มเกมใหม่ (Restart)
+        </button>
+        <button id="btn-exit-to-lobby" class="w-full py-2.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 font-bold text-sm border border-rose-900/50">
+          <i class="fa-solid fa-arrow-left mr-1.5"></i> กลับหน้าหลัก (Exit)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= GAME OVER / VICTORY MODAL ================= -->
+  <div id="modal-gameover" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+    <div class="glass-card-glow max-w-lg w-full p-6 sm:p-7 rounded-3xl flex flex-col items-center text-center border shadow-2xl relative">
+      
+      <div id="result-icon-badge" class="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-3 shadow-lg"></div>
+
+      <h2 id="result-title" class="text-3xl font-black tracking-tight mb-0.5">VICTORY!</h2>
+      <p id="result-subtitle" class="text-xs sm:text-sm text-slate-300 mb-4">
+        คุณสังหาร Lord Demon 3D และกอบกู้กาแล็กซีได้สำเร็จ!
+      </p>
+
+      <!-- Match Combat Analytics -->
+      <div class="w-full grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 text-left">
+        <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+          <span class="text-[10px] text-slate-400 uppercase block font-semibold">คะแนนรวม</span>
+          <span id="stat-score" class="text-base font-bold text-amber-400 font-mono">0</span>
+        </div>
+        <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+          <span class="text-[10px] text-slate-400 uppercase block font-semibold">กำจัดศัตรู</span>
+          <span id="stat-kills" class="text-base font-bold text-rose-400 font-mono">0</span>
+        </div>
+        <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+          <span class="text-[10px] text-slate-400 uppercase block font-semibold">ความเสียหายที่ทำ</span>
+          <span id="stat-damage-dealt" class="text-base font-bold text-sky-400 font-mono">0</span>
+        </div>
+        <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+          <span class="text-[10px] text-slate-400 uppercase block font-semibold">คริติคอลโดน</span>
+          <span id="stat-crits" class="text-base font-bold text-yellow-300 font-mono">0</span>
+        </div>
+      </div>
+
+      <!-- Final Leaderboard -->
+      <div class="w-full bg-slate-900/80 p-3 rounded-2xl border border-slate-800 mb-5">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+          <span><i class="fa-solid fa-list-ol mr-1 text-sky-400"></i> ตารางอันดับสุดท้าย (Final Leaderboard)</span>
+        </div>
+        <div id="final-leaderboard-list" class="flex flex-col gap-1.5 text-xs"></div>
+      </div>
+
+      <!-- Play Again & Return Buttons -->
+      <div class="flex items-center gap-3 w-full">
+        <button id="btn-play-again" class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-extrabold text-sm shadow-lg transition">
+          <i class="fa-solid fa-rotate-right mr-1.5"></i> เล่นใหม่อีกครั้ง
+        </button>
+        <button id="btn-finish-exit" class="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm border border-slate-700 transition">
+          <i class="fa-solid fa-house mr-1"></i> หน้าหลัก
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= DEVELOPER TESTING PANEL ================= -->
+  <div id="dev-cheat-panel" class="absolute bottom-2 left-2 z-30 flex flex-col items-start font-kanit">
+    <button id="btn-toggle-cheats" class="glass-card hover:bg-slate-800 text-slate-300 hover:text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border border-slate-700/80 shadow-md">
+      <i class="fa-solid fa-screwdriver-wrench text-amber-400"></i>
+      <span>เครื่องมือทดสอบ (Dev Panel)</span>
+      <i id="cheat-chevron" class="fa-solid fa-chevron-up text-[10px] text-slate-400"></i>
+    </button>
+
+    <div id="cheat-bar-content" class="hidden mt-2 glass-card p-2.5 rounded-2xl flex flex-wrap gap-2 max-w-xs sm:max-w-md border border-amber-500/30 shadow-2xl">
+      <button id="cheat-god-mode" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-slate-200 border border-slate-700 flex items-center gap-1.5">
+        <i class="fa-solid fa-shield text-sky-400"></i>
+        <span>God Mode: <b id="cheat-god-status" class="text-rose-400">OFF</b></span>
+      </button>
+
+      <button id="cheat-max-boost" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-amber-300 border border-slate-700 flex items-center gap-1.5">
+        <i class="fa-solid fa-bolt"></i> Boost 100%
+      </button>
+
+      <button id="cheat-refill-hp" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-emerald-300 border border-slate-700 flex items-center gap-1.5">
+        <i class="fa-solid fa-heart"></i> เลือด & เกราะเต็ม
+      </button>
+
+      <button id="cheat-spawn-monster" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-rose-300 border border-slate-700 flex items-center gap-1.5">
+        <i class="fa-solid fa-ghost"></i> เสกมอนสเตอร์ 3D
+      </button>
+
+      <button id="cheat-spawn-boss" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-purple-300 border border-slate-700 flex items-center gap-1.5">
+        <i class="fa-solid fa-crown"></i> เสกบอส 3D ทันที
+      </button>
+
+      <button id="cheat-kill-all" class="px-2.5 py-1.5 rounded-xl bg-rose-900/50 hover:bg-rose-800/60 text-[11px] font-bold text-rose-200 border border-rose-800 flex items-center gap-1.5">
+        <i class="fa-solid fa-bomb"></i> ล้างศัตรูทั้งหมด
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= JAVASCRIPT: 3D FPS GAME ENGINE ================= -->
+  <script>
+    /* ==========================================================================
+       1. WEB AUDIO SYNTHESIZER
+       ========================================================================== */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.volume = 0.8;
+        this.muted = false;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      play(name) {
+        if (this.muted || this.volume <= 0) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const masterGain = this.ctx.createGain();
+        masterGain.gain.setValueAtTime(this.volume, now);
+        masterGain.connect(this.ctx.destination);
+
+        switch (name) {
+          case 'shoot': {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(950, now);
+            osc.frequency.exponentialRampToValueAtTime(150, now + 0.09);
+            gain.gain.setValueAtTime(0.28, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+            osc.connect(gain);
+            gain.connect(masterGain);
+            osc.start(now);
+            osc.stop(now + 0.09);
+            break;
+          }
+          case 'hit': {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(240, now);
+            osc.frequency.exponentialRampToValueAtTime(70, now + 0.07);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+            osc.connect(gain);
+            gain.connect(masterGain);
+            osc.start(now);
+            osc.stop(now + 0.07);
+            break;
+          }
+          case 'crit': {
+            [1300, 1950].forEach((freq, i) => {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(freq, now + i * 0.02);
+              gain.gain.setValueAtTime(0.35, now + i * 0.02);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+              osc.connect(gain);
+              gain.connect(masterGain);
+              osc.start(now + i * 0.02);
+              osc.stop(now + 0.22);
+            });
+            break;
+          }
+          case 'dash': {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(140, now);
+            osc.frequency.linearRampToValueAtTime(600, now + 0.12);
+            gain.gain.setValueAtTime(0.35, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+            osc.connect(gain);
+            gain.connect(masterGain);
+            osc.start(now);
+            osc.stop(now + 0.16);
+            break;
+          }
+          case 'pickup': {
+            [523.25, 783.99].forEach((freq, idx) => {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'sine';
+              const t = now + idx * 0.08;
+              osc.frequency.setValueAtTime(freq, t);
+              gain.gain.setValueAtTime(0.3, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+              osc.connect(gain);
+              gain.connect(masterGain);
+              osc.start(t);
+              osc.stop(t + 0.15);
+            });
+            break;
+          }
+          case 'nuke': {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(180, now);
+            osc.frequency.exponentialRampToValueAtTime(25, now + 0.9);
+            gain.gain.setValueAtTime(0.7, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+            osc.connect(gain);
+            gain.connect(masterGain);
+            osc.start(now);
+            osc.stop(now + 0.9);
+            break;
+          }
+          case 'playerHurt': {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.linearRampToValueAtTime(60, now + 0.15);
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.connect(gain);
+            gain.connect(masterGain);
+            osc.start(now);
+            osc.stop(now + 0.15);
+            break;
+          }
+          case 'bossAttack': {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(170, now);
+            osc.frequency.exponentialRampToValueAtTime(65, now + 0.25);
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+            osc.connect(gain);
+            gain.connect(masterGain);
+            osc.start(now);
+            osc.stop(now + 0.25);
+            break;
+          }
+          case 'victory': {
+            [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'triangle';
+              const t = now + idx * 0.14;
+              osc.frequency.setValueAtTime(freq, t);
+              gain.gain.setValueAtTime(0.35, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+              osc.connect(gain);
+              gain.connect(masterGain);
+              osc.start(t);
+              osc.stop(t + 0.35);
+            });
+            break;
+          }
+          case 'defeat': {
+            [392.00, 349.23, 311.13, 261.63].forEach((freq, idx) => {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'sine';
+              const t = now + idx * 0.18;
+              osc.frequency.setValueAtTime(freq, t);
+              gain.gain.setValueAtTime(0.35, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+              osc.connect(gain);
+              gain.connect(masterGain);
+              osc.start(t);
+              osc.stop(t + 0.4);
+            });
+            break;
+          }
+        }
+      }
+    }
+    const sound = new SoundEngine();
+
+    /* ==========================================================================
+       2. COSTUMES & 3D LOBBY PREVIEW
+       ========================================================================== */
+    const COSTUMES = [
+      { id: 'azure', name: 'Classic Azure', color: '#0284c7', hex: 0x0284c7 },
+      { id: 'crimson', name: 'Crimson Fury', color: '#dc2626', hex: 0xdc2626 },
+      { id: 'emerald', name: 'Emerald Hunter', color: '#16a34a', hex: 0x16a34a },
+      { id: 'violet', name: 'Neon Violet', color: '#9333ea', hex: 0x9333ea },
+      { id: 'gold', name: 'Solar Gold', color: '#d97706', hex: 0xd97706 }
+    ];
+    let selectedCostume = COSTUMES[0];
+
+    // Helper to build 3D Cyber Gun model
+    function createCyberGunMesh(colorHex) {
+      const gunGroup = new THREE.Group();
+
+      // Gun Body Main
+      const bodyGeo = new THREE.BoxGeometry(0.18, 0.22, 0.8);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.2 });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      gunGroup.add(body);
+
+      // Gun Armor Plates with Costume Accent Color
+      const armorGeo = new THREE.BoxGeometry(0.2, 0.12, 0.45);
+      const armorMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        metalness: 0.5,
+        roughness: 0.3,
+        emissive: colorHex,
+        emissiveIntensity: 0.3
+      });
+      const armor = new THREE.Mesh(armorGeo, armorMat);
+      armor.position.set(0, 0.08, -0.05);
+      gunGroup.add(armor);
+
+      // Dual Energy Barrels
+      const barrelGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.45, 16);
+      const barrelMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.1 });
+      
+      const leftBarrel = new THREE.Mesh(barrelGeo, barrelMat);
+      leftBarrel.rotation.x = Math.PI / 2;
+      leftBarrel.position.set(0.06, 0.02, -0.55);
+      gunGroup.add(leftBarrel);
+
+      const rightBarrel = new THREE.Mesh(barrelGeo, barrelMat);
+      rightBarrel.rotation.x = Math.PI / 2;
+      rightBarrel.position.set(-0.06, 0.02, -0.55);
+      gunGroup.add(rightBarrel);
+
+      // Glowing Neon Energy Core
+      const coreGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.2, 8);
+      const coreMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+      const core = new THREE.Mesh(coreGeo, coreMat);
+      core.rotation.z = Math.PI / 2;
+      core.position.set(0, 0.04, 0.1);
+      gunGroup.add(core);
+
+      // Muzzle flash point light
+      const muzzleLight = new THREE.PointLight(0x38bdf8, 0, 8);
+      muzzleLight.position.set(0, 0.02, -0.8);
+      gunGroup.add(muzzleLight);
+      gunGroup.userData.muzzleLight = muzzleLight;
+      gunGroup.userData.armorMat = armorMat;
+
+      return gunGroup;
+    }
+
+    // 3D Lobby Preview Scene
+    const previewCanvas = document.getElementById('previewCanvas');
+    const previewRenderer = new THREE.WebGLRenderer({ canvas: previewCanvas, alpha: true, antialias: true });
+    previewRenderer.setSize(144, 144);
+    previewRenderer.setPixelRatio(window.devicePixelRatio);
+
+    const previewScene = new THREE.Scene();
+    const previewCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+    previewCamera.position.set(1.1, 0.8, 1.4);
+    previewCamera.lookAt(0, 0, 0);
+
+    const previewLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    previewLight.position.set(2, 3, 2);
+    previewScene.add(previewLight);
+    previewScene.add(new THREE.AmbientLight(0xffffff, 0.8));
+
+    let previewGun = createCyberGunMesh(selectedCostume.hex);
+    previewScene.add(previewGun);
+
+    function render3DPreview() {
+      if (previewGun) {
+        previewGun.rotation.y += 0.02;
+        previewGun.rotation.x = Math.sin(Date.now() * 0.003) * 0.1;
+      }
+      previewRenderer.render(previewScene, previewCamera);
+      requestAnimationFrame(render3DPreview);
+    }
+    render3DPreview();
+
+    /* ==========================================================================
+       3. 3D FPS MAIN SCENE & RENDERER SETUP
+       ========================================================================== */
+    const container = document.getElementById('webgl-canvas-container');
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050711);
+    scene.fog = new THREE.FogExp2(0x050711, 0.012);
+
+    // Camera Rig & FPS Camera
+    const cameraRig = new THREE.Group();
+    scene.add(cameraRig);
+
+    const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 300);
+    camera.position.set(0, 1.7, 0); // Eye height
+    cameraRig.add(camera);
+
+    // FPS First-Person Gun Model attached to camera
+    let playerGun = createCyberGunMesh(selectedCostume.hex);
+    playerGun.position.set(0.32, -0.26, -0.6);
+    playerGun.scale.set(1, 1, 1);
+    camera.add(playerGun);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0x475569, 1.0);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xbae6fd, 1.4);
+    sunLight.position.set(40, 60, 30);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 1024;
+    sunLight.shadow.mapSize.height = 1024;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 150;
+    sunLight.shadow.camera.left = -60;
+    sunLight.shadow.camera.right = 60;
+    sunLight.shadow.camera.top = 60;
+    sunLight.shadow.camera.bottom = -60;
+    scene.add(sunLight);
+
+    /* ==========================================================================
+       4. 3D ARENA & OBSTACLES (5 PILLARS)
+       ========================================================================== */
+    const ARENA_SIZE = 90; // -45 to +45 bounds
+
+    // Cyber Grid Floor
+    const gridHelper = new THREE.GridHelper(ARENA_SIZE, 45, 0x0284c7, 0x1e293b);
+    gridHelper.position.y = 0.01;
+    scene.add(gridHelper);
+
+    const floorGeo = new THREE.PlaneGeometry(ARENA_SIZE, ARENA_SIZE);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x0a0f1d, roughness: 0.8, metalness: 0.2 });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // Outer Perimeter Glowing Neon Walls
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      emissive: 0x0284c7,
+      emissiveIntensity: 0.15,
+      roughness: 0.5,
+      metalness: 0.5
+    });
+
+    function createArenaWall(width, height, depth, x, y, z) {
+      const wallGeo = new THREE.BoxGeometry(width, height, depth);
+      const wall = new THREE.Mesh(wallGeo, wallMat);
+      wall.position.set(x, y, z);
+      wall.castShadow = true;
+      wall.receiveShadow = true;
+      scene.add(wall);
+    }
+    const wallH = 6;
+    createArenaWall(ARENA_SIZE, wallH, 1, 0, wallH / 2, -ARENA_SIZE / 2); // North
+    createArenaWall(ARENA_SIZE, wallH, 1, 0, wallH / 2, ARENA_SIZE / 2);  // South
+    createArenaWall(1, wallH, ARENA_SIZE, -ARENA_SIZE / 2, wallH / 2, 0); // West
+    createArenaWall(1, wallH, ARENA_SIZE, ARENA_SIZE / 2, wallH / 2, 0);  // East
+
+    // 5 3D Obstacles / Pillars
+    const OBSTACLE_DEFS = [
+      { x: -20, z: -18, w: 5, d: 5, h: 8 },
+      { x: 20, z: -18, w: 5, d: 5, h: 8 },
+      { x: 0, z: 0, w: 7, d: 7, h: 10 },    // Center Master Pillar
+      { x: -20, z: 18, w: 5, d: 5, h: 8 },
+      { x: 20, z: 18, w: 5, d: 5, h: 8 }
+    ];
+
+    const obstacleMeshes = [];
+    const pillarMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      metalness: 0.7,
+      roughness: 0.3,
+      emissive: 0x38bdf8,
+      emissiveIntensity: 0.1
+    });
+
+    OBSTACLE_DEFS.forEach(def => {
+      const geo = new THREE.BoxGeometry(def.w, def.h, def.d);
+      const mesh = new THREE.Mesh(geo, pillarMat);
+      mesh.position.set(def.x, def.h / 2, def.z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+      mesh.userData = { ...def, radius: Math.max(def.w, def.d) * 0.75 };
+      obstacleMeshes.push(mesh);
+    });
+
+    /* ==========================================================================
+       5. GAME STATE & CONSTANTS
+       ========================================================================== */
+    const CRIT_CHANCE = 0.59;
+    const CRIT_MULTIPLIER = 2.45;
+    const BASE_BULLET_DAMAGE = 15;
+
+    const gameState = {
+      running: false,
+      paused: false,
+      wave: 1,
+      monstersToSpawn: 20,
+      monstersAlive: 0,
+      godMode: false,
+      stats: {
+        score: 0,
+        kills: 0,
+        damageDealt: 0,
+        damageTaken: 0,
+        critHits: 0
+      }
+    };
+
+    /* ==========================================================================
+       6. PLAYER FPS LOGIC, POINTER LOCK & CONTROLS
+       ========================================================================== */
+    class PlayerFPS {
+      constructor() {
+        this.reset();
+      }
+
+      reset() {
+        cameraRig.position.set(0, 0, 24);
+        camera.rotation.set(0, 0, 0);
+        this.pitch = 0;
+        this.yaw = 0;
+
+        this.hp = 100;
+        this.maxHp = 100;
+        this.shield = 50;
+        this.maxShield = 50;
+        this.boost = 0;
+        this.maxBoost = 100;
+
+        this.speed = 15; // units / sec
+        this.dashCooldown = 0;
+        this.dashMaxCooldown = 1.2;
+        this.dashTimer = 0;
+        this.dashDuration = 0.24;
+
+        this.fireCooldown = 0;
+        this.fireRate = 0.16;
+
+        this.recoilZ = 0;
+        this.weaponBobTimer = 0;
+        this.invulnerableTimer = 0;
+      }
+
+      update(dt, input) {
+        if (this.dashCooldown > 0) this.dashCooldown -= dt;
+        if (this.fireCooldown > 0) this.fireCooldown -= dt;
+        if (this.invulnerableTimer > 0) this.invulnerableTimer -= dt;
+
+        // Weapon recoil recovery
+        this.recoilZ = THREE.MathUtils.lerp(this.recoilZ, 0, dt * 18);
+        playerGun.position.z = -0.6 + this.recoilZ;
+
+        // Dash logic
+        if (this.dashTimer > 0) {
+          this.dashTimer -= dt;
+          const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+          cameraRig.position.addScaledVector(forward, this.speed * 2.8 * dt);
+          camera.fov = THREE.MathUtils.lerp(camera.fov, 95, dt * 25);
+          camera.updateProjectionMatrix();
+        } else {
+          camera.fov = THREE.MathUtils.lerp(camera.fov, 75, dt * 12);
+          camera.updateProjectionMatrix();
+
+          // Movement vector from input
+          const moveDir = new THREE.Vector3();
+          if (input.keys['KeyW'] || input.keys['ArrowUp']) moveDir.z -= 1;
+          if (input.keys['KeyS'] || input.keys['ArrowDown']) moveDir.z += 1;
+          if (input.keys['KeyA'] || input.keys['ArrowLeft']) moveDir.x -= 1;
+          if (input.keys['KeyD'] || input.keys['ArrowRight']) moveDir.x += 1;
+
+          if (input.joystick.active) {
+            moveDir.x = input.joystick.x;
+            moveDir.z = input.joystick.y;
+          }
+
+          if (moveDir.lengthSq() > 0) {
+            moveDir.normalize();
+            // Transform movement relative to camera Yaw
+            moveDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+            this.moveWithObstacleCollision(moveDir.x * this.speed * dt, moveDir.z * this.speed * dt);
+
+            // Weapon Bobbing
+            this.weaponBobTimer += dt * 14;
+            playerGun.position.y = -0.26 + Math.sin(this.weaponBobTimer) * 0.015;
+            playerGun.position.x = 0.32 + Math.cos(this.weaponBobTimer * 0.5) * 0.01;
+          } else {
+            playerGun.position.y = THREE.MathUtils.lerp(playerGun.position.y, -0.26, dt * 8);
+            playerGun.position.x = THREE.MathUtils.lerp(playerGun.position.x, 0.32, dt * 8);
+          }
+
+          // Trigger Dash
+          if (input.dashPressed && this.dashCooldown <= 0) {
+            this.dashTimer = this.dashDuration;
+            this.dashCooldown = this.dashMaxCooldown;
+            this.invulnerableTimer = this.dashDuration;
+            sound.play('dash');
+            input.dashPressed = false;
+          }
+        }
+
+        // Clamp inside arena walls
+        const bound = ARENA_SIZE / 2 - 2;
+        cameraRig.position.x = Math.max(-bound, Math.min(bound, cameraRig.position.x));
+        cameraRig.position.z = Math.max(-bound, Math.min(bound, cameraRig.position.z));
+        cameraRig.position.y = 0; // Fixed ground height
+
+        // Shooting
+        if ((input.mouseDown || input.mobileFiring) && this.fireCooldown <= 0) {
+          this.shoot();
+          this.fireCooldown = this.fireRate;
+        }
+
+        // Ultimate Nuke
+        if (input.nukePressed) {
+          this.triggerNuke();
+          input.nukePressed = false;
+        }
+      }
+
+      moveWithObstacleCollision(dx, dz) {
+        let targetX = cameraRig.position.x + dx;
+        let targetZ = cameraRig.position.z + dz;
+        const playerRadius = 1.0;
+
+        for (const obs of OBSTACLE_DEFS) {
+          const halfW = obs.w / 2 + playerRadius;
+          const halfD = obs.d / 2 + playerRadius;
+          if (targetX > obs.x - halfW && targetX < obs.x + halfW &&
+              targetZ > obs.z - halfD && targetZ < obs.z + halfD) {
+            // Simple push-out
+            return;
+          }
+        }
+        cameraRig.position.x = targetX;
+        cameraRig.position.z = targetZ;
+      }
+
+      shoot() {
+        sound.play('shoot');
+        this.recoilZ = 0.12;
+
+        // Flash muzzle light
+        if (playerGun.userData.muzzleLight) {
+          playerGun.userData.muzzleLight.intensity = 4;
+          setTimeout(() => {
+            if (playerGun.userData.muzzleLight) playerGun.userData.muzzleLight.intensity = 0;
+          }, 50);
+        }
+
+        // Calculate direction from center of screen (Camera forward vector)
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+        
+        // Spawn origin near gun tip
+        const origin = cameraRig.position.clone().add(new THREE.Vector3(0, 1.55, 0)).addScaledVector(forward, 0.7);
+
+        const isCrit = Math.random() < CRIT_CHANCE;
+        const damage = isCrit ? Math.round(BASE_BULLET_DAMAGE * CRIT_MULTIPLIER) : BASE_BULLET_DAMAGE;
+
+        bullets.push(new Bullet3D(origin, forward, 'player', damage, isCrit, selectedCostume.hex));
+      }
+
+      triggerNuke() {
+        if (this.boost < 100) return;
+        this.boost = 0;
+        sound.play('nuke');
+
+        // 3D Expanding Shockwave Mesh
+        const shockGeo = new THREE.SphereGeometry(2, 32, 16);
+        const shockMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.8, wireframe: true });
+        const shockMesh = new THREE.Mesh(shockGeo, shockMat);
+        shockMesh.position.copy(cameraRig.position);
+        scene.add(shockMesh);
+
+        let scale = 1;
+        const expandInterval = setInterval(() => {
+          scale += 1.5;
+          shockMesh.scale.set(scale, scale, scale);
+          shockMat.opacity -= 0.04;
+          if (shockMat.opacity <= 0) {
+            clearInterval(expandInterval);
+            scene.remove(shockMesh);
+            shockGeo.dispose();
+            shockMat.dispose();
+          }
+        }, 16);
+
+        // Wipe out or heavily damage enemies
+        monsters.forEach(m => {
+          m.takeDamage(500, false, 'player');
+        });
+        if (boss && boss.alive) {
+          boss.takeDamage(450, false, 'player');
+        }
+      }
+
+      takeDamage(amount) {
+        if (gameState.godMode || this.dashTimer > 0 || this.invulnerableTimer > 0) return;
+
+        sound.play('playerHurt');
+        gameState.stats.damageTaken += amount;
+
+        if (this.shield > 0) {
+          if (this.shield >= amount) {
+            this.shield -= amount;
+            amount = 0;
+          } else {
+            amount -= this.shield;
+            this.shield = 0;
+          }
+        }
+
+        if (amount > 0) {
+          this.hp = Math.max(0, this.hp - amount);
+          if (this.hp <= 0) {
+            handleGameOver(false);
+          }
+        }
+        this.invulnerableTimer = 0.25;
+      }
+    }
+
+    const player = new PlayerFPS();
+
+    /* ==========================================================================
+       7. AI COMPANIONS (3D BOT-ALPHA & BOT-BLAZE)
+       ========================================================================== */
+    class BotCompanion3D {
+      constructor(id, name, colorHex, initialX, initialZ) {
+        this.id = id;
+        this.name = name;
+        this.colorHex = colorHex;
+        this.score = 0;
+        this.fireCooldown = 0;
+        this.fireRate = 0.35;
+        this.speed = 10;
+
+        // 3D Robot Mesh
+        this.mesh = new THREE.Group();
+        
+        // Torso
+        const bodyGeo = new THREE.BoxGeometry(0.8, 1.1, 0.5);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.2 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 1.2;
+        this.mesh.add(body);
+
+        // Armor Plate Accent
+        const chestGeo = new THREE.BoxGeometry(0.84, 0.5, 0.25);
+        const chestMat = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.3 });
+        const chest = new THREE.Mesh(chestGeo, chestMat);
+        chest.position.set(0, 1.35, 0.2);
+        this.mesh.add(chest);
+
+        // Head Visor
+        const headGeo = new THREE.BoxGeometry(0.5, 0.45, 0.45);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 2.0;
+        this.mesh.add(head);
+
+        const visorGeo = new THREE.BoxGeometry(0.4, 0.15, 0.1);
+        const visorMat = new THREE.MeshBasicMaterial({ color: colorHex });
+        const visor = new THREE.Mesh(visorGeo, visorMat);
+        visor.position.set(0, 2.0, 0.24);
+        this.mesh.add(visor);
+
+        this.mesh.position.set(initialX, 0, initialZ);
+        this.mesh.castShadow = true;
+        scene.add(this.mesh);
+      }
+
+      update(dt) {
+        if (this.fireCooldown > 0) this.fireCooldown -= dt;
+
+        // Find nearest enemy
+        let target = null;
+        let minDist = Infinity;
+
+        monsters.forEach(m => {
+          if (m.alive) {
+            const d = this.mesh.position.distanceTo(m.mesh.position);
+            if (d < minDist) {
+              minDist = d;
+              target = m;
+            }
+          }
+        });
+
+        if (boss && boss.alive) {
+          const d = this.mesh.position.distanceTo(boss.mesh.position);
+          if (d < minDist) {
+            minDist = d;
+            target = boss;
+          }
+        }
+
+        if (target) {
+          const targetPos = target.mesh.position.clone();
+          targetPos.y = 0; // Stay on plane
+
+          this.mesh.lookAt(targetPos.x, this.mesh.position.y, targetPos.z);
+
+          // Move maintaining distance ~14 units
+          const dist = this.mesh.position.distanceTo(targetPos);
+          const dir = new THREE.Vector3().subVectors(targetPos, this.mesh.position).normalize();
+
+          if (dist > 16) {
+            this.mesh.position.addScaledVector(dir, this.speed * dt);
+          } else if (dist < 10) {
+            this.mesh.position.addScaledVector(dir, -this.speed * dt);
+          }
+
+          // Shoot
+          if (this.fireCooldown <= 0 && dist < 35) {
+            const shootOrigin = this.mesh.position.clone().add(new THREE.Vector3(0, 1.3, 0));
+            const shootDir = new THREE.Vector3().subVectors(target.mesh.position, shootOrigin).normalize();
+            bullets.push(new Bullet3D(shootOrigin, shootDir, this.id, BASE_BULLET_DAMAGE, false, this.colorHex));
+            this.fireCooldown = this.fireRate;
+          }
+        } else {
+          // Patrol slightly around spawn
+          this.mesh.rotation.y += dt * 0.8;
+        }
+
+        // Clamp inside arena
+        const bound = ARENA_SIZE / 2 - 3;
+        this.mesh.position.x = Math.max(-bound, Math.min(bound, this.mesh.position.x));
+        this.mesh.position.z = Math.max(-bound, Math.min(bound, this.mesh.position.z));
+      }
+    }
+
+    const bots = [
+      new BotCompanion3D('bot1', 'Bot-Alpha', 0x9333ea, -12, 16),
+      new BotCompanion3D('bot2', 'Bot-Blaze', 0xf97316, 12, 16)
+    ];
+
+    /* ==========================================================================
+       8. 3D BULLETS, PICKUPS & PARTICLES
+       ========================================================================== */
+    class Bullet3D {
+      constructor(origin, direction, shooter, damage, isCrit, colorHex) {
+        this.position = origin.clone();
+        this.direction = direction.clone().normalize();
+        this.shooter = shooter;
+        this.damage = damage;
+        this.isCrit = isCrit;
+        this.colorHex = colorHex;
+        this.speed = (shooter === 'boss') ? 32 : 75; // units / sec
+        this.radius = isCrit ? 0.45 : 0.28;
+        this.alive = true;
+        this.lifetime = 3.0;
+
+        // 3D Glowing Plasma Sphere
+        const geo = new THREE.SphereGeometry(this.radius, 12, 8);
+        const mat = new THREE.MeshBasicMaterial({ color: isCrit ? 0xfef08a : colorHex });
+        this.mesh = new THREE.Mesh(geo, mat);
+        this.mesh.position.copy(this.position);
+        scene.add(this.mesh);
+      }
+
+      update(dt) {
+        this.lifetime -= dt;
+        if (this.lifetime <= 0) {
+          this.destroy();
+          return;
+        }
+
+        const moveStep = this.direction.clone().multiplyScalar(this.speed * dt);
+        this.position.add(moveStep);
+        this.mesh.position.copy(this.position);
+
+        // Check arena bounds
+        const bound = ARENA_SIZE / 2;
+        if (Math.abs(this.position.x) > bound || Math.abs(this.position.z) > bound || this.position.y < 0 || this.position.y > 20) {
+          this.destroy();
+          return;
+        }
+
+        // Check obstacle collision
+        for (const obs of OBSTACLE_DEFS) {
+          if (this.position.x > obs.x - obs.w / 2 && this.position.x < obs.x + obs.w / 2 &&
+              this.position.z > obs.z - obs.d / 2 && this.position.z < obs.z + obs.d / 2 &&
+              this.position.y < obs.h) {
+            this.destroy();
+            break;
+          }
+        }
+      }
+
+      destroy() {
+        if (!this.alive) return;
+        this.alive = false;
+        scene.remove(this.mesh);
+        this.mesh.geometry.dispose();
+        this.mesh.material.dispose();
+      }
+    }
+
+    class Pickup3D {
+      constructor(x, z, type) {
+        this.type = type; // 'heal', 'shield', 'boost'
+        this.alive = true;
+        this.lifetime = 16;
+        this.radius = 1.4;
+
+        this.mesh = new THREE.Group();
+        let color = 0x10b981;
+        let geo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+
+        if (type === 'shield') {
+          color = 0x38bdf8;
+          geo = new THREE.OctahedronGeometry(0.65);
+        } else if (type === 'boost') {
+          color = 0xfbbf24;
+          geo = new THREE.ConeGeometry(0.5, 1.0, 6);
+        }
+
+        const mat = new THREE.MeshStandardMaterial({
+          color: color,
+          emissive: color,
+          emissiveIntensity: 0.6,
+          metalness: 0.5,
+          roughness: 0.2
+        });
+        const inner = new THREE.Mesh(geo, mat);
+        this.mesh.add(inner);
+
+        this.mesh.position.set(x, 1.2, z);
+        scene.add(this.mesh);
+      }
+
+      update(dt) {
+        this.lifetime -= dt;
+        if (this.lifetime <= 0) {
+          this.destroy();
+          return;
+        }
+
+        this.mesh.rotation.y += dt * 2;
+        this.mesh.position.y = 1.2 + Math.sin(Date.now() * 0.005) * 0.25;
+
+        // Player collection
+        const dist = cameraRig.position.distanceTo(new THREE.Vector3(this.mesh.position.x, 0, this.mesh.position.z));
+        if (dist < 2.2) {
+          this.collect();
+          this.destroy();
+        }
+      }
+
+      collect() {
+        sound.play('pickup');
+        if (this.type === 'heal') {
+          player.hp = Math.min(player.maxHp, player.hp + 25);
+          create3DFloatingText('+25 HP', cameraRig.position, '#10b981', true);
+        } else if (this.type === 'shield') {
+          player.shield = Math.min(player.maxShield, player.shield + 40);
+          create3DFloatingText('+40 SHIELD', cameraRig.position, '#38bdf8', true);
+        } else if (this.type === 'boost') {
+          player.boost = Math.min(player.maxBoost, player.boost + 35);
+          create3DFloatingText('+35% BOOST', cameraRig.position, '#fbbf24', true);
+        }
+      }
+
+      destroy() {
+        if (!this.alive) return;
+        this.alive = false;
+        scene.remove(this.mesh);
+      }
+    }
+
+    /* ==========================================================================
+       9. 3D ENEMIES (MONSTER 3D & LORD DEMON BOSS 3D)
+       ========================================================================== */
+    class Monster3D {
+      constructor(x, z) {
+        this.hp = 35;
+        this.maxHp = 35;
+        this.speed = Math.random() * 2 + 5.5; // units / sec
+        this.radius = 1.2;
+        this.alive = true;
+        this.attackCooldown = 0;
+
+        // 3D Alien Monster Mesh
+        this.mesh = new THREE.Group();
+
+        // Main Body Spiked Sphere
+        const bodyGeo = new THREE.DodecahedronGeometry(0.85);
+        const bodyMat = new THREE.MeshStandardMaterial({
+          color: 0x991b1b,
+          emissive: 0xef4444,
+          emissiveIntensity: 0.25,
+          roughness: 0.4
+        });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 1.0;
+        this.mesh.add(body);
+
+        // Glowing Fiery Eyes
+        const eyeGeo = new THREE.SphereGeometry(0.16, 8, 8);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+
+        const eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeLeft.position.set(0.3, 1.2, 0.7);
+        this.mesh.add(eyeLeft);
+
+        const eyeRight = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeRight.position.set(-0.3, 1.2, 0.7);
+        this.mesh.add(eyeRight);
+
+        this.mesh.position.set(x, 0, z);
+        this.mesh.castShadow = true;
+        scene.add(this.mesh);
+      }
+
+      update(dt) {
+        if (this.attackCooldown > 0) this.attackCooldown -= dt;
+
+        // Find nearest target among player & bots
+        let targetPos = cameraRig.position.clone();
+        let minDist = this.mesh.position.distanceTo(targetPos);
+
+        bots.forEach(b => {
+          const d = this.mesh.position.distanceTo(b.mesh.position);
+          if (d < minDist) {
+            minDist = d;
+            targetPos = b.mesh.position.clone();
+          }
+        });
+
+        targetPos.y = 0;
+        this.mesh.lookAt(targetPos.x, this.mesh.position.y, targetPos.z);
+
+        const dir = new THREE.Vector3().subVectors(targetPos, this.mesh.position).normalize();
+        this.mesh.position.addScaledVector(dir, this.speed * dt);
+
+        // Hover bobbing
+        this.mesh.position.y = Math.sin(Date.now() * 0.008 + this.speed) * 0.2;
+
+        // Melee attack on player
+        const distToPlayer = this.mesh.position.distanceTo(cameraRig.position);
+        if (distToPlayer < 2.0 && this.attackCooldown <= 0) {
+          player.takeDamage(12);
+          this.attackCooldown = 0.8;
+        }
+      }
+
+      takeDamage(amount, isCrit, shooter) {
+        this.hp -= amount;
+        triggerHitmarker();
+
+        if (isCrit) {
+          sound.play('crit');
+          create3DFloatingText(`CRIT ${amount}!`, this.mesh.position, '#fbbf24', true);
+          gameState.stats.critHits++;
+        } else {
+          sound.play('hit');
+          create3DFloatingText(`${amount}`, this.mesh.position, '#ffffff', false);
+        }
+
+        if (shooter === 'player') {
+          gameState.stats.damageDealt += amount;
+          player.boost = Math.min(player.maxBoost, player.boost + 4);
+        }
+
+        if (this.hp <= 0 && this.alive) {
+          this.alive = false;
+          if (shooter === 'player') {
+            gameState.stats.score += 100;
+            gameState.stats.kills++;
+            player.boost = Math.min(player.maxBoost, player.boost + 10);
+          } else if (shooter === 'bot1') {
+            bots[0].score += 100;
+          } else if (shooter === 'bot2') {
+            bots[1].score += 100;
+          }
+
+          // 40% item drop
+          if (Math.random() < 0.4) {
+            const roll = Math.random();
+            const type = roll < 0.35 ? 'heal' : (roll < 0.7 ? 'shield' : 'boost');
+            pickups.push(new Pickup3D(this.mesh.position.x, this.mesh.position.z, type));
+          }
+
+          this.destroy();
+        }
+      }
+
+      destroy() {
+        scene.remove(this.mesh);
+      }
+    }
+
+    class BossLordDemon3D {
+      constructor() {
+        this.hp = 1200;
+        this.maxHp = 1200;
+        this.alive = true;
+        this.patternTimer = 0;
+        this.patternIndex = 0;
+        this.radius = 3.5;
+
+        // 3D Demon Boss Mesh
+        this.mesh = new THREE.Group();
+
+        // Demon Torso
+        const bodyGeo = new THREE.SphereGeometry(2.4, 24, 16);
+        const bodyMat = new THREE.MeshStandardMaterial({
+          color: 0x4c0519,
+          emissive: 0xbe123c,
+          emissiveIntensity: 0.3,
+          roughness: 0.3
+        });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 5.0;
+        this.mesh.add(body);
+
+        // Demon Horns
+        const hornGeo = new THREE.ConeGeometry(0.6, 2.2, 8);
+        const hornMat = new THREE.MeshStandardMaterial({ color: 0x881337, roughness: 0.1 });
+
+        const hornLeft = new THREE.Mesh(hornGeo, hornMat);
+        hornLeft.position.set(1.4, 7.0, 0.4);
+        hornLeft.rotation.z = -0.4;
+        this.mesh.add(hornLeft);
+
+        const hornRight = new THREE.Mesh(hornGeo, hornMat);
+        hornRight.position.set(-1.4, 7.0, 0.4);
+        hornRight.rotation.z = 0.4;
+        this.mesh.add(hornRight);
+
+        // Glowing Fiery Demon Eyes
+        const eyeGeo = new THREE.SphereGeometry(0.4, 12, 8);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+
+        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeL.position.set(0.8, 5.6, 2.1);
+        this.mesh.add(eyeL);
+
+        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeR.position.set(-0.8, 5.6, 2.1);
+        this.mesh.add(eyeR);
+
+        // Flapping 3D Demon Wings
+        const wingGeo = new THREE.BoxGeometry(4.5, 3.2, 0.15);
+        const wingMat = new THREE.MeshStandardMaterial({
+          color: 0x1f0209,
+          emissive: 0xe11d48,
+          emissiveIntensity: 0.2
+        });
+
+        this.leftWing = new THREE.Mesh(wingGeo, wingMat);
+        this.leftWing.position.set(3.8, 5.5, -0.6);
+        this.mesh.add(this.leftWing);
+
+        this.rightWing = new THREE.Mesh(wingGeo, wingMat);
+        this.rightWing.position.set(-3.8, 5.5, -0.6);
+        this.mesh.add(this.rightWing);
+
+        this.mesh.position.set(0, 0, -25);
+        scene.add(this.mesh);
+      }
+
+      update(dt) {
+        // Flap wings
+        const wingAngle = Math.sin(Date.now() * 0.006) * 0.45;
+        this.leftWing.rotation.y = wingAngle;
+        this.rightWing.rotation.y = -wingAngle;
+
+        // Hover float
+        this.mesh.position.y = Math.sin(Date.now() * 0.003) * 0.8;
+
+        // Face player
+        const targetPos = cameraRig.position.clone();
+        this.mesh.lookAt(targetPos.x, this.mesh.position.y + 4.5, targetPos.z);
+
+        // Attack pattern cycles
+        this.patternTimer += dt;
+        if (this.patternTimer > 2.5) {
+          this.executeAttack(this.patternIndex);
+          this.patternIndex = (this.patternIndex + 1) % 3;
+          this.patternTimer = 0;
+        }
+      }
+
+      executeAttack(index) {
+        sound.play('bossAttack');
+        const center = this.mesh.position.clone().add(new THREE.Vector3(0, 5, 0));
+
+        if (index === 0) {
+          // 1. Radial 14-bullet 3D Ring
+          const count = 14;
+          for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const dir = new THREE.Vector3(Math.cos(angle), -0.1, Math.sin(angle)).normalize();
+            bullets.push(new Bullet3D(center, dir, 'boss', 16, false, 0xf43f5e));
+          }
+        } else if (index === 1) {
+          // 2. Focused Spread (3 bullets towards player)
+          const aimDir = new THREE.Vector3().subVectors(cameraRig.position.clone().add(new THREE.Vector3(0, 1.2, 0)), center).normalize();
+          [-0.15, 0, 0.15].forEach(offset => {
+            const d = aimDir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), offset);
+            bullets.push(new Bullet3D(center, d, 'boss', 20, false, 0xfb7185));
+          });
+        } else if (index === 2) {
+          // 3. Spiral Barrage (8 bullets in quick rotation)
+          for (let i = 0; i < 8; i++) {
+            setTimeout(() => {
+              if (this.alive && gameState.running && !gameState.paused) {
+                const aimDir = new THREE.Vector3().subVectors(cameraRig.position, center).normalize();
+                aimDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), (i - 4) * 0.12);
+                bullets.push(new Bullet3D(center, aimDir, 'boss', 16, false, 0xe11d48));
+              }
+            }, i * 110);
+          }
+        }
+      }
+
+      takeDamage(amount, isCrit, shooter) {
+        this.hp -= amount;
+        triggerHitmarker();
+
+        if (isCrit) {
+          sound.play('crit');
+          create3DFloatingText(`CRIT ${amount}!`, this.mesh.position.clone().add(new THREE.Vector3(0, 4, 0)), '#fbbf24', true);
+          gameState.stats.critHits++;
+        } else {
+          sound.play('hit');
+          create3DFloatingText(`${amount}`, this.mesh.position.clone().add(new THREE.Vector3(0, 4, 0)), '#ffffff', false);
+        }
+
+        if (shooter === 'player') {
+          gameState.stats.damageDealt += amount;
+          player.boost = Math.min(player.maxBoost, player.boost + 2);
+        }
+
+        if (this.hp <= 0 && this.alive) {
+          this.alive = false;
+          if (shooter === 'player') gameState.stats.score += 1500;
+          else if (shooter === 'bot1') bots[0].score += 1500;
+          else if (shooter === 'bot2') bots[1].score += 1500;
+
+          setTimeout(() => {
+            handleGameOver(true);
+          }, 600);
+          scene.remove(this.mesh);
+        }
+      }
+    }
+
+    let monsters = [];
+    let bullets = [];
+    let pickups = [];
+    let boss = null;
+
+    /* ==========================================================================
+       10. 3D FLOATING DAMAGE TEXT (PROJECTED OVERLAY)
+       ========================================================================== */
+    const damageTextLayer = document.getElementById('damage-text-layer');
+
+    function create3DFloatingText(text, worldPos, color, isBig = false) {
+      const el = document.createElement('div');
+      el.className = `absolute font-kanit font-extrabold tracking-wide transition-all pointer-events-none transform -translate-x-1/2 -translate-y-1/2 ${isBig ? 'text-xl' : 'text-sm'}`;
+      el.style.color = color;
+      el.style.textShadow = `0 0 8px ${color}`;
+      el.textContent = text;
+      damageTextLayer.appendChild(el);
+
+      const pos = worldPos.clone();
+      let lifetime = isBig ? 1.0 : 0.7;
+      const initialLife = lifetime;
+
+      const anim = () => {
+        lifetime -= 0.016;
+        pos.y += 0.04;
+
+        // Project 3D coordinate to 2D Screen
+        const screenPos = pos.clone().project(camera);
+        const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        el.style.opacity = `${Math.max(0, lifetime / initialLife)}`;
+
+        if (lifetime > 0 && screenPos.z < 1) {
+          requestAnimationFrame(anim);
+        } else {
+          el.remove();
+        }
+      };
+      anim();
+    }
+
+    function triggerHitmarker() {
+      const ch = document.getElementById('crosshair');
+      ch.classList.add('hitmarker');
+      setTimeout(() => ch.classList.remove('hitmarker'), 150);
+    }
+
+    /* ==========================================================================
+       11. SPAWNER & WAVE PROGRESSION
+       ========================================================================== */
+    let spawnTimer = 0;
+
+    function spawnMonster3D() {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = ARENA_SIZE / 2 - 6;
+      const x = Math.cos(angle) * dist;
+      const z = Math.sin(angle) * dist;
+      monsters.push(new Monster3D(x, z));
+      gameState.monstersAlive++;
+    }
+
+    function checkWaveProgression(dt) {
+      if (gameState.wave === 1) {
+        spawnTimer += dt;
+        if (spawnTimer > 0.9 && gameState.monstersToSpawn > 0 && monsters.length < 9) {
+          spawnMonster3D();
+          gameState.monstersToSpawn--;
+          spawnTimer = 0;
+        }
+
+        if (gameState.monstersToSpawn === 0 && monsters.length === 0) {
+          transitionToWave2();
+        }
+      }
+    }
+
+    function transitionToWave2() {
+      gameState.wave = 2;
+      document.getElementById('hud-wave-title').textContent = 'WAVE 2: LORD DEMON 3D (BOSS)';
+      document.getElementById('hud-boss-container').classList.remove('hidden');
+      document.getElementById('hud-boss-container').classList.add('flex');
+      sound.play('bossAttack');
+
+      boss = new BossLordDemon3D();
+    }
+
+    /* ==========================================================================
+       12. COLLISIONS
+       ========================================================================== */
+    function checkCollisions() {
+      bullets.forEach(b => {
+        if (!b.alive) return;
+
+        if (b.shooter !== 'boss') {
+          // Check monsters
+          for (const m of monsters) {
+            if (m.alive) {
+              const dist = b.position.distanceTo(m.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)));
+              if (dist < m.radius + b.radius) {
+                m.takeDamage(b.damage, b.isCrit, b.shooter);
+                b.destroy();
+                break;
+              }
+            }
+          }
+
+          // Check boss
+          if (b.alive && boss && boss.alive) {
+            const dist = b.position.distanceTo(boss.mesh.position.clone().add(new THREE.Vector3(0, 5, 0)));
+            if (dist < boss.radius + b.radius) {
+              boss.takeDamage(b.damage, b.isCrit, b.shooter);
+              b.destroy();
+            }
+          }
+        } else {
+          // Boss bullet hitting player
+          const dist = b.position.distanceTo(cameraRig.position.clone().add(new THREE.Vector3(0, 1.4, 0)));
+          if (dist < 1.4 + b.radius) {
+            player.takeDamage(b.damage);
+            b.destroy();
+          }
+        }
+      });
+    }
+
+    /* ==========================================================================
+       13. INPUT & POINTER LOCK EVENT LISTENERS
+       ========================================================================== */
+    const input = {
+      keys: {},
+      mouseDown: false,
+      dashPressed: false,
+      nukePressed: false,
+      joystick: { active: false, x: 0, y: 0 },
+      mobileFiring: false
+    };
+
+    let isPointerLocked = false;
+    const clickNotice = document.getElementById('click-to-focus-notice');
+
+    document.addEventListener('pointerlockchange', () => {
+      isPointerLocked = document.pointerLockElement === document.body;
+      if (isPointerLocked) {
+        clickNotice.classList.add('hidden');
+      } else if (gameState.running && !gameState.paused) {
+        clickNotice.classList.remove('hidden');
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isPointerLocked || !gameState.running || gameState.paused) return;
+
+      const sensitivity = 0.0022;
+      player.yaw -= e.movementX * sensitivity;
+      player.pitch -= e.movementY * sensitivity;
+
+      // Clamp vertical pitch (-80 to +80 deg)
+      const maxPitch = Math.PI / 2.2;
+      player.pitch = Math.max(-maxPitch, Math.min(maxPitch, player.pitch));
+
+      cameraRig.rotation.y = player.yaw;
+      camera.rotation.x = player.pitch;
+    });
+
+    window.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        sound.init();
+        if (gameState.running && !gameState.paused && !isPointerLocked) {
+          document.body.requestPointerLock();
+        }
+        input.mouseDown = true;
+      }
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 0) input.mouseDown = false;
+    });
+
+    window.addEventListener('keydown', (e) => {
+      input.keys[e.code] = true;
+      if (e.code === 'Space') input.dashPressed = true;
+      if (e.code === 'KeyQ') input.nukePressed = true;
+      if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
+    });
+
+    window.addEventListener('keyup', (e) => {
+      input.keys[e.code] = false;
+    });
+
+    // Resize handling
+    window.addEventListener('resize', () => {
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    });
+
+    /* ==========================================================================
+       14. MAIN 3D RENDER & UPDATE LOOP
+       ========================================================================== */
+    let lastTime = performance.now();
+
+    function animate(now) {
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+
+      if (gameState.running && !gameState.paused) {
+        player.update(dt, input);
+        bots.forEach(b => b.update(dt));
+
+        bullets.forEach(b => b.update(dt));
+        bullets = bullets.filter(b => b.alive);
+
+        monsters.forEach(m => m.update(dt));
+        monsters = monsters.filter(m => m.alive);
+
+        if (boss && boss.alive) boss.update(dt);
+
+        pickups.forEach(p => p.update(dt));
+        pickups = pickups.filter(p => p.alive);
+
+        checkCollisions();
+        checkWaveProgression(dt);
+        updateHUD();
+      }
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+
+    /* ==========================================================================
+       15. HUD & UI MANAGEMENT
+       ========================================================================== */
+    function updateHUD() {
+      document.getElementById('hud-hp-bar').style.width = `${(player.hp / player.maxHp) * 100}%`;
+      document.getElementById('hud-hp-text').textContent = `${Math.round(player.hp)}/${player.maxHp}`;
+      document.getElementById('hud-shield-bar').style.width = `${(player.shield / player.maxShield) * 100}%`;
+      document.getElementById('hud-shield-text').textContent = `${Math.round(player.shield)}/${player.maxShield}`;
+
+      const boostPct = Math.round(player.boost);
+      const boostBar = document.getElementById('hud-boost-bar');
+      boostBar.style.width = `${boostPct}%`;
+      document.getElementById('hud-boost-text').textContent = `${boostPct}%`;
+
+      const dashBadge = document.getElementById('hud-dash-badge');
+      if (player.dashCooldown <= 0) {
+        dashBadge.textContent = 'DASH: READY';
+        dashBadge.className = 'px-2 py-0.5 rounded-full bg-slate-800 text-[11px] font-mono text-emerald-400 border border-emerald-500/40';
+      } else {
+        dashBadge.textContent = `DASH: ${player.dashCooldown.toFixed(1)}s`;
+        dashBadge.className = 'px-2 py-0.5 rounded-full bg-slate-800 text-[11px] font-mono text-slate-400 border border-slate-700';
+      }
+
+      if (gameState.wave === 1) {
+        document.getElementById('hud-enemies-left').textContent = `${gameState.monstersToSpawn + monsters.length}`;
+      } else {
+        document.getElementById('hud-enemies-left').textContent = boss && boss.alive ? '1 (LORD DEMON 3D)' : '0';
+      }
+
+      if (boss && boss.alive) {
+        const bossPct = Math.max(0, (boss.hp / boss.maxHp) * 100);
+        document.getElementById('hud-boss-hp-bar').style.width = `${bossPct}%`;
+        document.getElementById('hud-boss-hp-text').textContent = `${Math.max(0, Math.round(boss.hp))} / ${boss.maxHp}`;
+      }
+
+      updateLiveLeaderboard();
+    }
+
+    function updateLiveLeaderboard() {
+      const list = [
+        { name: 'คุณ (Player 3D)', score: gameState.stats.score, color: selectedCostume.color, isPlayer: true },
+        { name: bots[0].name, score: bots[0].score, color: '#9333ea', isPlayer: false },
+        { name: bots[1].name, score: bots[1].score, color: '#f97316', isPlayer: false }
+      ];
+      list.sort((a, b) => b.score - a.score);
+
+      const container = document.getElementById('hud-leaderboard-list');
+      container.innerHTML = list.map((item, idx) => `
+        <div class="flex items-center justify-between px-2 py-1 rounded-lg ${item.isPlayer ? 'bg-sky-500/20 border border-sky-400/40' : 'bg-slate-800/40'}">
+          <div class="flex items-center gap-1.5 truncate">
+            <span class="font-bold font-mono ${idx === 0 ? 'text-amber-400' : 'text-slate-400'}">#${idx + 1}</span>
+            <span class="w-2 h-2 rounded-full" style="background-color: ${item.color}"></span>
+            <span class="truncate font-semibold text-slate-200">${item.name}</span>
+          </div>
+          <span class="font-mono font-bold text-amber-300 ml-2">${item.score}</span>
+        </div>
+      `).join('');
+    }
+
+    /* ==========================================================================
+       16. GAME STATE TRANSITIONS
+       ========================================================================== */
+    function startGame() {
+      sound.init();
+      gameState.running = true;
+      gameState.paused = false;
+      gameState.wave = 1;
+      gameState.monstersToSpawn = 20;
+      gameState.monstersAlive = 0;
+      gameState.stats = { score: 0, kills: 0, damageDealt: 0, damageTaken: 0, critHits: 0 };
+
+      player.reset();
+      bots[0].score = 0;
+      bots[1].score = 0;
+
+      // Clean existing entities
+      monsters.forEach(m => m.destroy());
+      monsters = [];
+      bullets.forEach(b => b.destroy());
+      bullets = [];
+      pickups.forEach(p => p.destroy());
+      pickups = [];
+      if (boss) {
+        scene.remove(boss.mesh);
+        boss = null;
+      }
+
+      document.getElementById('hud-player-dot').style.backgroundColor = selectedCostume.color;
+      document.getElementById('hud-wave-title').textContent = 'WAVE 1: MONSTER HORDE 3D';
+      document.getElementById('hud-boss-container').classList.add('hidden');
+
+      document.getElementById('modal-lobby').classList.add('hidden');
+      document.getElementById('modal-pause').classList.add('hidden');
+      document.getElementById('modal-gameover').classList.add('hidden');
+      document.getElementById('game-hud').classList.remove('hidden');
+      document.getElementById('crosshair').classList.remove('hidden');
+
+      // Request Pointer Lock for FPS
+      try {
+        document.body.requestPointerLock();
+      } catch (err) {}
+    }
+
+    function togglePause() {
+      if (!gameState.running) return;
+      gameState.paused = !gameState.paused;
+      const pauseModal = document.getElementById('modal-pause');
+      if (gameState.paused) {
+        pauseModal.classList.remove('hidden');
+        document.exitPointerLock();
+      } else {
+        pauseModal.classList.add('hidden');
+        try { document.body.requestPointerLock(); } catch (err) {}
+      }
+    }
+
+    function handleGameOver(isVictory) {
+      gameState.running = false;
+      document.exitPointerLock();
+      document.getElementById('crosshair').classList.add('hidden');
+      document.getElementById('modal-gameover').classList.remove('hidden');
+
+      if (isVictory) {
+        sound.play('victory');
+        document.getElementById('result-icon-badge').innerHTML = '<i class="fa-solid fa-trophy text-amber-400"></i>';
+        document.getElementById('result-icon-badge').className = 'w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-3 shadow-lg bg-amber-500/20 border border-amber-400/50';
+        document.getElementById('result-title').textContent = 'VICTORY! ชัยชนะแห่ง 3D FPS';
+        document.getElementById('result-title').className = 'text-3xl font-black tracking-tight mb-0.5 text-amber-400';
+        document.getElementById('result-subtitle').textContent = 'คุณและเหล่าบอทปราบ Lord Demon 3D สำเร็จอย่างยิ่งใหญ่!';
+      } else {
+        sound.play('defeat');
+        document.getElementById('result-icon-badge').innerHTML = '<i class="fa-solid fa-skull text-rose-400"></i>';
+        document.getElementById('result-icon-badge').className = 'w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-3 shadow-lg bg-rose-500/20 border border-rose-400/50';
+        document.getElementById('result-title').textContent = 'GAME OVER! คุณพ่ายแพ้';
+        document.getElementById('result-title').className = 'text-3xl font-black tracking-tight mb-0.5 text-rose-500';
+        document.getElementById('result-subtitle').textContent = 'พลังชีวิตหมดลงในสมรภูมิ 3 มิติ ฝึกฝนและกลับมาลุยใหม่!';
+      }
+
+      document.getElementById('stat-score').textContent = gameState.stats.score;
+      document.getElementById('stat-kills').textContent = gameState.stats.kills;
+      document.getElementById('stat-damage-dealt').textContent = gameState.stats.damageDealt;
+      document.getElementById('stat-crits').textContent = gameState.stats.critHits;
+
+      const list = [
+        { name: 'คุณ (Player 3D)', score: gameState.stats.score, color: selectedCostume.color, isPlayer: true },
+        { name: bots[0].name, score: bots[0].score, color: '#9333ea', isPlayer: false },
+        { name: bots[1].name, score: bots[1].score, color: '#f97316', isPlayer: false }
+      ];
+      list.sort((a, b) => b.score - a.score);
+
+      document.getElementById('final-leaderboard-list').innerHTML = list.map((item, idx) => `
+        <div class="flex items-center justify-between p-2 rounded-xl ${item.isPlayer ? 'bg-sky-500/20 border border-sky-400/40' : 'bg-slate-800/50'}">
+          <div class="flex items-center gap-2">
+            <span class="font-bold font-mono text-sm ${idx === 0 ? 'text-amber-400' : 'text-slate-400'}">#${idx + 1}</span>
+            <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${item.color}"></span>
+            <span class="font-bold text-white">${item.name}</span>
+          </div>
+          <span class="font-mono font-extrabold text-amber-300 text-sm">${item.score} แต้ม</span>
+        </div>
+      `).join('');
+    }
+
+    function returnToLobby() {
+      gameState.running = false;
+      gameState.paused = false;
+      document.exitPointerLock();
+      document.getElementById('crosshair').classList.add('hidden');
+      document.getElementById('modal-lobby').classList.remove('hidden');
+      document.getElementById('modal-pause').classList.add('hidden');
+      document.getElementById('modal-gameover').classList.add('hidden');
+      document.getElementById('game-hud').classList.add('hidden');
+    }
+
+    /* ==========================================================================
+       17. LOBBY COSTUME BUTTONS INITIALIZATION
+       ========================================================================== */
+    const costumeButtonsContainer = document.getElementById('costume-buttons-container');
+    const costumeNameLabel = document.getElementById('costume-name-label');
+
+    COSTUMES.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = `w-8 h-8 rounded-full border-2 transition-all duration-150 transform hover:scale-110 shadow-md ${c.id === selectedCostume.id ? 'border-white scale-110 ring-2 ring-sky-400' : 'border-transparent opacity-80'}`;
+      btn.style.backgroundColor = c.color;
+      btn.title = c.name;
+
+      btn.addEventListener('click', () => {
+        selectedCostume = c;
+        costumeNameLabel.textContent = `สีปัจจุบัน: ${c.name}`;
+        
+        Array.from(costumeButtonsContainer.children).forEach((b, idx) => {
+          b.className = `w-8 h-8 rounded-full border-2 transition-all duration-150 transform hover:scale-110 shadow-md ${COSTUMES[idx].id === c.id ? 'border-white scale-110 ring-2 ring-sky-400' : 'border-transparent opacity-80'}`;
+        });
+
+        // Update 3D preview model
+        previewScene.remove(previewGun);
+        previewGun = createCyberGunMesh(c.hex);
+        previewScene.add(previewGun);
+
+        // Update First-Person in-game Gun model
+        camera.remove(playerGun);
+        playerGun = createCyberGunMesh(c.hex);
+        playerGun.position.set(0.32, -0.26, -0.6);
+        camera.add(playerGun);
+
+        sound.play('pickup');
+      });
+
+      costumeButtonsContainer.appendChild(btn);
+    });
+
+    // Volume Slider
+    const sfxSlider = document.getElementById('slider-sfx-volume');
+    sfxSlider.addEventListener('input', (e) => {
+      sound.volume = e.target.value / 100;
+      document.getElementById('label-volume-val').textContent = `${e.target.value}%`;
+    });
+
+    // Sound toggle
+    const soundToggle = document.getElementById('btn-sound-toggle');
+    const soundIcon = document.getElementById('sound-icon');
+    soundToggle.addEventListener('click', () => {
+      sound.muted = !sound.muted;
+      soundIcon.className = sound.muted ? 'fa-solid fa-volume-xmark text-rose-400 text-sm' : 'fa-solid fa-volume-high text-sky-400 text-sm';
+      if (!sound.muted) sound.init();
+    });
+
+    // Modal Actions
+    document.getElementById('btn-start-game').addEventListener('click', startGame);
+    document.getElementById('btn-pause').addEventListener('click', togglePause);
+    document.getElementById('btn-resume-game').addEventListener('click', togglePause);
+    document.getElementById('btn-restart-game').addEventListener('click', startGame);
+    document.getElementById('btn-exit-to-lobby').addEventListener('click', returnToLobby);
+    document.getElementById('btn-play-again').addEventListener('click', startGame);
+    document.getElementById('btn-finish-exit').addEventListener('click', returnToLobby);
+
+    // Help Modal
+    document.getElementById('btn-how-to-play').addEventListener('click', () => {
+      document.getElementById('modal-help').classList.remove('hidden');
+    });
+    document.getElementById('btn-close-help').addEventListener('click', () => {
+      document.getElementById('modal-help').classList.add('hidden');
+    });
+    document.getElementById('btn-help-ok').addEventListener('click', () => {
+      document.getElementById('modal-help').classList.add('hidden');
+    });
+
+    /* ==========================================================================
+       18. DEVELOPER TESTING PANEL (CHEAT BAR)
+       ========================================================================== */
+    const cheatToggleBtn = document.getElementById('btn-toggle-cheats');
+    const cheatBarContent = document.getElementById('cheat-bar-content');
+    const cheatChevron = document.getElementById('cheat-chevron');
+
+    cheatToggleBtn.addEventListener('click', () => {
+      const isHidden = cheatBarContent.classList.contains('hidden');
+      if (isHidden) {
+        cheatBarContent.classList.remove('hidden');
+        cheatChevron.className = 'fa-solid fa-chevron-down text-[10px] text-slate-400';
+      } else {
+        cheatBarContent.classList.add('hidden');
+        cheatChevron.className = 'fa-solid fa-chevron-up text-[10px] text-slate-400';
+      }
+    });
+
+    // God Mode
+    const cheatGodBtn = document.getElementById('cheat-god-mode');
+    const cheatGodStatus = document.getElementById('cheat-god-status');
+    cheatGodBtn.addEventListener('click', () => {
+      gameState.godMode = !gameState.godMode;
+      cheatGodStatus.textContent = gameState.godMode ? 'ON' : 'OFF';
+      cheatGodStatus.className = gameState.godMode ? 'text-emerald-400' : 'text-rose-400';
+    });
+
+    // Max Boost
+    document.getElementById('cheat-max-boost').addEventListener('click', () => {
+      player.boost = 100;
+      create3DFloatingText('BOOST 100%!', cameraRig.position, '#fbbf24', true);
+      sound.play('pickup');
+    });
+
+    // Refill HP & Shield
+    document.getElementById('cheat-refill-hp').addEventListener('click', () => {
+      player.hp = player.maxHp;
+      player.shield = player.maxShield;
+      create3DFloatingText('MAX HP & SHIELD!', cameraRig.position, '#10b981', true);
+      sound.play('pickup');
+    });
+
+    // Spawn Monster
+    document.getElementById('cheat-spawn-monster').addEventListener('click', () => {
+      spawnMonster3D();
+      create3DFloatingText('+1 MONSTER 3D', cameraRig.position, '#ef4444', false);
+    });
+
+    // Spawn Boss
+    document.getElementById('cheat-spawn-boss').addEventListener('click', () => {
+      monsters.forEach(m => m.destroy());
+      monsters = [];
+      gameState.monstersToSpawn = 0;
+      transitionToWave2();
+    });
+
+    // Kill All
+    document.getElementById('cheat-kill-all').addEventListener('click', () => {
+      monsters.forEach(m => m.takeDamage(9999, true, 'player'));
+      if (boss && boss.alive) boss.takeDamage(9999, true, 'player');
+    });
+  </script>
+</body>
+</html>
