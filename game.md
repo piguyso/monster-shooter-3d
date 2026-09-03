@@ -2,6 +2,9 @@
 **เอกสารสรุปข้อกำหนด โครงสร้างเกม และแผนการพัฒนา (Game Design Document & Roadmap - 3D FPS Edition)**
 
 > เอกสารฉบับนี้ถูกปรับปรุงสำหรับการอัปเกรดเป็นเกม **3D First-Person Shooter (FPS)** โดยใช้ WebGL (Three.js)
+> 
+> 🌐 **เล่นเกมออนไลน์สด (Live Game URL):** [https://piguyso.github.io/monster-shooter-3d/](https://piguyso.github.io/monster-shooter-3d/)
+> 📦 **GitHub Repository:** [https://github.com/piguyso/monster-shooter-3d](https://github.com/piguyso/monster-shooter-3d)
 
 ---
 
