@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Monster Shooter 3D - Multiplayer Bot Competition & Costumes (FPS)</title>
+  <title>Monster Shooter 3D - Multi-Stage Flow Line & Boss Battles (FPS)</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -25,8 +25,8 @@
           },
           colors: {
             game: {
-              dark: '#060913',
-              panel: 'rgba(15, 23, 42, 0.85)',
+              dark: '#040711',
+              panel: 'rgba(15, 23, 42, 0.88)',
               accent: '#38bdf8',
             }
           }
@@ -43,24 +43,32 @@
     }
     body {
       font-family: 'Kanit', sans-serif;
-      background-color: #04060d;
+      background-color: #03060f;
       color: #f8fafc;
       overflow: hidden;
     }
     .glass-card {
       background: rgba(15, 23, 42, 0.8);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 12px 30px 0 rgba(0, 0, 0, 0.5);
+      box-shadow: 0 12px 30px 0 rgba(0, 0, 0, 0.55);
     }
     .glass-card-glow {
-      background: rgba(15, 23, 42, 0.88);
+      background: rgba(15, 23, 42, 0.9);
       backdrop-filter: blur(16px);
       border: 1px solid rgba(56, 189, 248, 0.35);
       box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);
     }
-    /* FPS Crosshair */
+    /* Flow Line SVG styles */
+    .flow-line-path {
+      stroke-dasharray: 8, 8;
+      animation: dashFlow 1.2s linear infinite;
+    }
+    @keyframes dashFlow {
+      to { stroke-dashoffset: -16; }
+    }
+    /* Crosshair */
     #crosshair {
       position: absolute;
       top: 50%;
@@ -81,7 +89,7 @@
     }
     .ch-line {
       position: absolute;
-      background: rgba(56, 189, 248, 0.8);
+      background: rgba(56, 189, 248, 0.85);
       box-shadow: 0 0 4px #38bdf8;
     }
     .ch-top { width: 2px; height: 10px; top: -14px; }
@@ -119,12 +127,12 @@
       <div class="ch-line ch-right"></div>
     </div>
 
-    <!-- Pointer Lock Prompt Notice -->
+    <!-- Pointer Lock Notice -->
     <div id="click-to-focus-notice" class="hidden absolute top-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full glass-card-glow text-xs font-bold text-sky-300 z-30 pointer-events-none flex items-center gap-2">
       <i class="fa-solid fa-mouse text-amber-400"></i> คลิกหน้าจอเพื่อล็อคเมาส์เล็ง 3D (Click to Lock Mouse)
     </div>
 
-    <!-- TOP HUD OVERLAY (Active during 3D Game) -->
+    <!-- TOP HUD OVERLAY -->
     <div id="game-hud" class="hidden absolute top-0 left-0 w-full p-2 md:p-4 pointer-events-none flex justify-between items-start z-20">
       
       <!-- Left: Player Status Vitals -->
@@ -173,22 +181,24 @@
         </div>
       </div>
 
-      <!-- Center: Wave & Enemies Tracker -->
+      <!-- Center: Stage Tracker & Boss Bar -->
       <div class="pointer-events-auto flex flex-col items-center gap-1.5">
         <div id="hud-wave-badge" class="glass-card-glow px-4 py-1.5 rounded-full flex items-center gap-2.5 shadow-lg border border-sky-400/40">
-          <i class="fa-solid fa-skull-crossbones text-rose-400 text-sm"></i>
-          <span id="hud-wave-title" class="font-extrabold text-sm md:text-base tracking-wider text-sky-200">WAVE 1: MONSTER HORDE 3D</span>
-        </div>
-        <div class="glass-card px-3 py-1 rounded-full text-xs font-semibold text-slate-300 flex items-center gap-2">
-          <span>ศัตรูคงเหลือ:</span>
-          <span id="hud-enemies-left" class="text-rose-400 font-mono font-bold text-sm">20</span>
+          <span id="hud-stage-num" class="px-2 py-0.5 rounded-full bg-sky-500/30 text-sky-300 font-mono text-xs font-bold">STAGE 1</span>
+          <span id="hud-wave-title" class="font-extrabold text-sm md:text-base tracking-wider text-white">NEON OUTPOST</span>
         </div>
         
-        <!-- Boss HP Bar (Visible only in Wave 2) -->
+        <!-- Monster Quota Tracker (Before Boss Spawns) -->
+        <div id="hud-monster-quota-box" class="glass-card px-3 py-1 rounded-full text-xs font-semibold text-slate-300 flex items-center gap-2">
+          <span>เป้าหมายกำจัดมอนสเตอร์เพื่อเสกบอส:</span>
+          <span id="hud-quota-text" class="text-amber-400 font-mono font-bold text-sm">0 / 15</span>
+        </div>
+        
+        <!-- Boss HP Bar (Visible when Boss Spawns) -->
         <div id="hud-boss-container" class="hidden flex-col items-center w-72 sm:w-96 glass-card p-2 rounded-xl border border-rose-500/40">
           <div class="flex justify-between w-full text-xs font-bold text-rose-400 mb-1">
-            <span><i class="fa-solid fa-crown mr-1 text-amber-400"></i> LORD DEMON 3D (BOSS)</span>
-            <span id="hud-boss-hp-text" class="font-mono text-white">1200 / 1200</span>
+            <span id="hud-boss-name"><i class="fa-solid fa-crown mr-1 text-amber-400"></i> BOSS</span>
+            <span id="hud-boss-hp-text" class="font-mono text-white">800 / 800</span>
           </div>
           <div class="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-rose-500/50">
             <div id="hud-boss-hp-bar" class="h-full bg-gradient-to-r from-rose-600 via-red-500 to-amber-500 rounded-full transition-all duration-100 w-full"></div>
@@ -196,7 +206,7 @@
         </div>
       </div>
 
-      <!-- Right: Real-time Leaderboard & Settings Toggle -->
+      <!-- Right: Real-time Leaderboard & Settings -->
       <div class="pointer-events-auto flex flex-col items-end gap-2">
         <div class="flex items-center gap-2">
           <button id="btn-sound-toggle" class="glass-card hover:bg-slate-700/80 text-white w-9 h-9 rounded-xl flex items-center justify-center transition shadow">
@@ -208,10 +218,9 @@
           </button>
         </div>
 
-        <!-- Live Scoreboard -->
         <div class="glass-card p-2.5 rounded-2xl w-48 sm:w-56 shadow-lg border border-slate-700">
           <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center justify-between border-b border-slate-700/80 pb-1">
-            <span><i class="fa-solid fa-trophy text-amber-400 mr-1"></i> แข่งขันเรียลไทม์ 3D</span>
+            <span><i class="fa-solid fa-trophy text-amber-400 mr-1"></i> แข่งขันเรียลไทม์</span>
             <span class="text-[10px] text-sky-400 animate-pulse">LIVE</span>
           </div>
           <div id="hud-leaderboard-list" class="flex flex-col gap-1 text-xs"></div>
@@ -222,14 +231,12 @@
     <!-- 3D Floating Damage Text Container -->
     <div id="damage-text-layer" class="absolute inset-0 pointer-events-none z-15 overflow-hidden"></div>
 
-    <!-- MOBILE FPS TOUCH CONTROLS -->
+    <!-- MOBILE TOUCH CONTROLS -->
     <div id="mobile-controls" class="hidden md:hidden absolute bottom-4 left-0 w-full px-4 pointer-events-none justify-between items-end z-20">
-      <!-- Joystick Zone on Left for Movement -->
       <div id="touch-joystick-zone" class="pointer-events-auto relative w-28 h-28 rounded-full border-2 border-dashed border-sky-400/40 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center">
         <div id="touch-joystick-knob" class="w-12 h-12 rounded-full bg-sky-500/80 border border-white shadow-lg pointer-events-none"></div>
       </div>
 
-      <!-- Action Buttons on Right -->
       <div class="pointer-events-auto flex items-center gap-3">
         <button id="btn-mobile-fire" class="w-16 h-16 rounded-full glass-card-glow border-2 border-rose-500 flex flex-col items-center justify-center text-white active:scale-95 transition shadow-lg">
           <i class="fa-solid fa-crosshairs text-rose-400 text-xl"></i>
@@ -247,122 +254,89 @@
     </div>
   </div>
 
-  <!-- ================= LOBBY / START MODAL ================= -->
-  <div id="modal-lobby" class="absolute inset-0 z-40 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
-    <div class="glass-card-glow max-w-2xl w-full p-6 sm:p-8 rounded-3xl flex flex-col items-center text-center relative border border-sky-500/40 shadow-2xl">
+  <!-- ================= STAGE SELECT (FLOW LINE) MODAL ================= -->
+  <div id="modal-stage-select" class="absolute inset-0 z-40 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+    <div class="glass-card-glow max-w-4xl w-full p-6 sm:p-8 rounded-3xl flex flex-col items-center text-center relative border border-sky-500/40 shadow-2xl overflow-hidden">
       
-      <!-- Badge -->
-      <div class="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-sky-500/20 border border-sky-400/40 text-sky-300 text-xs font-bold uppercase tracking-wider mb-2">
-        <i class="fa-solid fa-cube"></i> Three.js 3D First-Person Shooter (FPS)
-      </div>
-
-      <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-400 via-indigo-300 to-purple-400">
-        MONSTER SHOOTER 3D
-      </h1>
-      <p class="text-slate-300 text-sm sm:text-base font-normal mt-1 mb-6">
-        First-Person Shooter • Multiplayer Bot Competition & 3D Costumes
-      </p>
-
-      <!-- 3D Weapon / Character Preview Area -->
-      <div class="w-full flex flex-col sm:flex-row items-center justify-center gap-6 my-2 bg-slate-900/60 p-4 rounded-2xl border border-slate-700/80">
-        <!-- 3D Preview Canvas -->
-        <div class="flex flex-col items-center">
-          <div class="relative w-36 h-36 rounded-2xl bg-gradient-to-b from-slate-800 to-slate-950 border-2 border-sky-500/50 shadow-inner flex items-center justify-center overflow-hidden">
-            <canvas id="previewCanvas" width="144" height="144" class="block"></canvas>
-            <div class="absolute bottom-1 text-[10px] text-sky-400 tracking-wider font-mono">3D WEAPON PREVIEW</div>
+      <!-- Top Header -->
+      <div class="flex justify-between items-center w-full mb-4 pb-3 border-b border-slate-700/60">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-400 text-lg">
+            <i class="fa-solid fa-route"></i>
+          </div>
+          <div class="text-left">
+            <h1 class="text-xl sm:text-2xl font-black text-white tracking-wide">เลือกระดับด่าน (FLOW LINE MISSIONS)</h1>
+            <p class="text-xs text-slate-400">กำจัดมอนสเตอร์ตามจำนวนที่กำหนดเพื่อปลุกมหาบอสประจำด่าน!</p>
           </div>
         </div>
 
-        <!-- Color Selectors -->
-        <div class="flex flex-col items-center sm:items-start">
-          <span class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <i class="fa-solid fa-palette text-amber-400"></i> เลือกสีคอสตูมปืน 3 มิติ (5 สี)
-          </span>
-          <div id="costume-buttons-container" class="flex flex-wrap gap-2.5 justify-center sm:justify-start"></div>
-          <div class="mt-2.5 text-xs text-sky-400 font-medium" id="costume-name-label">
-            สีปัจจุบัน: Classic Azure
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick Stats Callout -->
-      <div class="grid grid-cols-3 gap-2 w-full my-4 text-xs font-medium text-slate-300">
-        <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800 flex flex-col items-center">
-          <span class="text-emerald-400 font-bold text-sm">100 HP + 50 S</span>
-          <span class="text-[11px] text-slate-400">เกราะรับดาเมจก่อน</span>
-        </div>
-        <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800 flex flex-col items-center">
-          <span class="text-amber-400 font-bold text-sm">CRIT 59% (x2.45)</span>
-          <span class="text-[11px] text-slate-400">ยิงติดคริติคอลจัดเต็ม</span>
-        </div>
-        <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800 flex flex-col items-center">
-          <span class="text-purple-400 font-bold text-sm">2 AI BOTS 3D</span>
-          <span class="text-[11px] text-slate-400">แข่งคะแนนเรียลไทม์</span>
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="flex flex-col sm:flex-row items-center gap-3 w-full mt-2">
-        <button id="btn-start-game" class="w-full sm:flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-extrabold text-base tracking-wider shadow-lg shadow-sky-500/30 transition duration-200 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2">
-          <i class="fa-solid fa-crosshairs"></i> ล็อคเป้าเริ่มเล่นทันที (FPS 3D)
+        <button id="btn-open-costume-modal" class="glass-card hover:bg-slate-800 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border border-slate-700 transition">
+          <i class="fa-solid fa-palette text-amber-400"></i>
+          <span>เปลี่ยนสีปืน 3D</span>
         </button>
-        <button id="btn-how-to-play" class="w-full sm:w-auto py-3.5 px-5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm border border-slate-700 transition flex items-center justify-center gap-2">
-          <i class="fa-solid fa-circle-question text-sky-400"></i> คู่มือการเล่น
+      </div>
+
+      <!-- Flow Line Map Container -->
+      <div class="relative w-full my-4 py-6 px-4 bg-slate-900/60 rounded-2xl border border-slate-800 overflow-x-auto">
+        <!-- SVG Animated Flow Line connecting stages -->
+        <svg class="absolute top-1/2 left-0 w-full h-8 -translate-y-1/2 pointer-events-none hidden sm:block" preserveAspectRatio="none">
+          <line x1="12%" y1="50%" x2="88%" y2="50%" stroke="#0284c7" stroke-width="4" stroke-opacity="0.25" />
+          <line id="flow-line-active" class="flow-line-path" x1="12%" y1="50%" x2="40%" y2="50%" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" />
+        </svg>
+
+        <!-- Stage Nodes Row -->
+        <div id="flow-stages-row" class="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-4 px-2 sm:px-6">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Selected Stage Info Card -->
+      <div id="selected-stage-details" class="w-full bg-slate-900/80 p-4 rounded-2xl border border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-4 mt-2">
+        <div class="flex items-center gap-4 text-left">
+          <div id="stage-detail-icon" class="w-14 h-14 rounded-2xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-2xl text-sky-400">
+            <i class="fa-solid fa-shield-virus"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span id="stage-detail-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/30 text-sky-300 font-mono">STAGE 1</span>
+              <h3 id="stage-detail-title" class="text-base sm:text-lg font-bold text-white">Neon Outpost (ค่ายฝึกนีออน)</h3>
+            </div>
+            <p id="stage-detail-desc" class="text-xs text-slate-400 mt-0.5">
+              เป้าหมาย: กำจัดมอนสเตอร์ 15 ตัว เพื่อเผชิญหน้ากับบอส Cyber Golem 3D (HP 800)
+            </p>
+          </div>
+        </div>
+
+        <button id="btn-deploy-stage" class="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-blue-500 text-white font-extrabold text-sm tracking-wider shadow-lg shadow-sky-500/30 transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-play"></i> เข้าสู่สมรภูมิ (DEPLOY)
         </button>
       </div>
     </div>
   </div>
 
-  <!-- ================= HOW TO PLAY MODAL ================= -->
-  <div id="modal-help" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
-    <div class="glass-card max-w-xl w-full p-6 sm:p-7 rounded-3xl flex flex-col border border-slate-700 shadow-2xl">
-      <div class="flex justify-between items-center pb-3 border-b border-slate-700/80 mb-4">
-        <h2 class="text-xl font-bold text-white flex items-center gap-2">
-          <i class="fa-solid fa-book-open text-sky-400"></i> คู่มือการเล่น 3D FPS
+  <!-- ================= COSTUME SELECTOR MODAL ================= -->
+  <div id="modal-costume" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+    <div class="glass-card max-w-md w-full p-6 rounded-3xl flex flex-col items-center text-center border border-slate-700 shadow-2xl">
+      <div class="flex justify-between items-center w-full pb-3 border-b border-slate-700 mb-4">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-palette text-amber-400"></i> ปรับแต่งสีปืนไซเบอร์ 3D
         </h2>
-        <button id="btn-close-help" class="text-slate-400 hover:text-white text-lg p-1">
+        <button id="btn-close-costume" class="text-slate-400 hover:text-white p-1 text-lg">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
-      <div class="flex flex-col gap-3 text-xs sm:text-sm text-slate-300 max-h-[60vh] overflow-y-auto pr-2">
-        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-          <h3 class="font-bold text-sky-400 mb-1 flex items-center gap-1.5">
-            <i class="fa-solid fa-keyboard"></i> ปุ่มควบคุมมุมมองบุคคลที่หนึ่ง (FPS Controls)
-          </h3>
-          <ul class="list-disc list-inside space-y-1 text-slate-300">
-            <li><span class="font-semibold text-white">ขยับเมาส์ (Mouse Look)</span>: หันมุมมอง 360 องศา (คลิกจอเพื่อล็อคเมาส์)</li>
-            <li><span class="font-semibold text-white">W A S D</span> หรือลูกศร: เดินหน้า ถอยหลัง สไลด์ซ้าย-ขวาตามแนวสายตา</li>
-            <li><span class="font-semibold text-white">คลิกเมาส์ซ้าย</span>: ยิงกระสุนปืนพลาสมา 3D ต่อเนื่อง (มีแรงดีด Recoil)</li>
-            <li><span class="font-semibold text-white">SPACEBAR</span>: แดชพุ่งไปข้างหน้าพร้อมความเร็วสูงและเอฟเฟกต์ FOV (CD 1.2 วิ)</li>
-            <li><span class="font-semibold text-white">ปุ่ม Q</span>: ระเบิดคลื่นพลังงาน 3D Shockwave ล้างบางรอบทิศ (เมื่อ Boost 100%)</li>
-            <li><span class="font-semibold text-white">ปุ่ม ESC หรือ P</span>: หยุดเกมและปลดล็อคเมาส์</li>
-          </ul>
-        </div>
-
-        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-          <h3 class="font-bold text-amber-400 mb-1 flex items-center gap-1.5">
-            <i class="fa-solid fa-crosshairs"></i> กฎการต่อสู้ 2 Wave & บอส 3D
-          </h3>
-          <ul class="list-disc list-inside space-y-1 text-slate-300">
-            <li><span class="font-semibold text-white">Wave 1:</span> กำจัดฝูงมอนสเตอร์ไซเบอร์ 3D จำนวน 20 ตัว (+100 แต้มต่อตัว)</li>
-            <li><span class="font-semibold text-white">Wave 2:</span> ดวลมหาบอส <span class="text-rose-400 font-bold">Lord Demon 3D</span> ปีกกระพือได้ HP 1,200 (+1,500 แต้ม)</li>
-            <li><span class="font-semibold text-white">ไอเทม 3D ลอยได้ (40%):</span> กล่องเขียว (+25 HP), โล่ฟ้า (+40 Shield), คริสตัลสายฟ้า (+35% Boost)</li>
-          </ul>
-        </div>
-
-        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-          <h3 class="font-bold text-purple-400 mb-1 flex items-center gap-1.5">
-            <i class="fa-solid fa-robot"></i> บอท AI คู่แข่ง 3D (Bot-Alpha & Bot-Blaze)
-          </h3>
-          <p>
-            บอทไซเบอร์ 3D 2 ตัวจะร่วมลาดตระเวนและเล็งยิงมอนสเตอร์ แข่งทำคะแนนกับคุณบนตาราง Real-time Leaderboard สดๆ จงคว้าที่ 1 ให้ได้!
-          </p>
-        </div>
+      <!-- 3D Preview Canvas -->
+      <div class="relative w-36 h-36 rounded-2xl bg-gradient-to-b from-slate-800 to-slate-950 border-2 border-sky-500/50 shadow-inner flex items-center justify-center overflow-hidden mb-4">
+        <canvas id="previewCanvas" width="144" height="144" class="block"></canvas>
+        <div class="absolute bottom-1 text-[10px] text-sky-400 tracking-wider font-mono">3D WEAPON PREVIEW</div>
       </div>
 
-      <button id="btn-help-ok" class="mt-4 w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow">
-        เข้าใจแล้ว ลุยสนามรบ 3D เลย!
+      <div id="costume-buttons-container" class="flex flex-wrap gap-3 justify-center mb-3"></div>
+      <div class="text-xs text-sky-400 font-medium mb-5" id="costume-name-label">สีปัจจุบัน: Classic Azure</div>
+
+      <button id="btn-costume-done" class="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow">
+        ตกลง
       </button>
     </div>
   </div>
@@ -376,7 +350,6 @@
       <h2 class="text-2xl font-bold text-white mb-1">เกมหยุดชั่วคราว</h2>
       <p class="text-xs text-slate-400 mb-5">PAUSED & SETTINGS</p>
 
-      <!-- SFX Volume Slider -->
       <div class="w-full bg-slate-900/70 p-3 rounded-xl border border-slate-800 mb-4 text-left">
         <div class="flex justify-between text-xs font-semibold mb-1">
           <span class="text-slate-300"><i class="fa-solid fa-volume-high text-sky-400 mr-1"></i> เสียงเอฟเฟกต์ (SFX Volume)</span>
@@ -387,13 +360,13 @@
 
       <div class="flex flex-col gap-2.5 w-full">
         <button id="btn-resume-game" class="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow">
-          <i class="fa-solid fa-play mr-1.5"></i> เล่นเกมต่อ (Resume)
+          <i class="fa-solid fa-play mr-1.5"></i> เล่นต่อ (Resume)
         </button>
         <button id="btn-restart-game" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-slate-700">
-          <i class="fa-solid fa-rotate-right mr-1.5 text-amber-400"></i> เริ่มเกมใหม่ (Restart)
+          <i class="fa-solid fa-rotate-right mr-1.5 text-amber-400"></i> เล่นด่านนี้ใหม่ (Restart)
         </button>
-        <button id="btn-exit-to-lobby" class="w-full py-2.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 font-bold text-sm border border-rose-900/50">
-          <i class="fa-solid fa-arrow-left mr-1.5"></i> กลับหน้าหลัก (Exit)
+        <button id="btn-exit-to-flow" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm border border-slate-700">
+          <i class="fa-solid fa-route mr-1.5 text-sky-400"></i> กลับหน้าเลือกด่าน (Flow Line)
         </button>
       </div>
     </div>
@@ -407,10 +380,10 @@
 
       <h2 id="result-title" class="text-3xl font-black tracking-tight mb-0.5">VICTORY!</h2>
       <p id="result-subtitle" class="text-xs sm:text-sm text-slate-300 mb-4">
-        คุณสังหาร Lord Demon 3D และกอบกู้กาแล็กซีได้สำเร็จ!
+        คุณสังหารบอสประจำด่านสำเร็จ!
       </p>
 
-      <!-- Match Combat Analytics -->
+      <!-- Combat Analytics -->
       <div class="w-full grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 text-left">
         <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
           <span class="text-[10px] text-slate-400 uppercase block font-semibold">คะแนนรวม</span>
@@ -421,30 +394,22 @@
           <span id="stat-kills" class="text-base font-bold text-rose-400 font-mono">0</span>
         </div>
         <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-          <span class="text-[10px] text-slate-400 uppercase block font-semibold">ความเสียหายที่ทำ</span>
+          <span class="text-[10px] text-slate-400 uppercase block font-semibold">ความเสียหาย</span>
           <span id="stat-damage-dealt" class="text-base font-bold text-sky-400 font-mono">0</span>
         </div>
         <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-          <span class="text-[10px] text-slate-400 uppercase block font-semibold">คริติคอลโดน</span>
+          <span class="text-[10px] text-slate-400 uppercase block font-semibold">คริติคอล</span>
           <span id="stat-crits" class="text-base font-bold text-yellow-300 font-mono">0</span>
         </div>
       </div>
 
-      <!-- Final Leaderboard -->
-      <div class="w-full bg-slate-900/80 p-3 rounded-2xl border border-slate-800 mb-5">
-        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-          <span><i class="fa-solid fa-list-ol mr-1 text-sky-400"></i> ตารางอันดับสุดท้าย (Final Leaderboard)</span>
-        </div>
-        <div id="final-leaderboard-list" class="flex flex-col gap-1.5 text-xs"></div>
-      </div>
-
-      <!-- Play Again & Return Buttons -->
+      <!-- Action Buttons -->
       <div class="flex items-center gap-3 w-full">
-        <button id="btn-play-again" class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-extrabold text-sm shadow-lg transition">
-          <i class="fa-solid fa-rotate-right mr-1.5"></i> เล่นใหม่อีกครั้ง
+        <button id="btn-next-stage" class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-sm shadow-lg transition">
+          <i class="fa-solid fa-forward mr-1.5"></i> ด่านถัดไป (Next Stage)
         </button>
-        <button id="btn-finish-exit" class="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm border border-slate-700 transition">
-          <i class="fa-solid fa-house mr-1"></i> หน้าหลัก
+        <button id="btn-return-flow" class="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm border border-slate-700 transition">
+          <i class="fa-solid fa-route mr-1.5 text-sky-400"></i> เลือกด่าน
         </button>
       </div>
     </div>
@@ -454,7 +419,7 @@
   <div id="dev-cheat-panel" class="absolute bottom-2 left-2 z-30 flex flex-col items-start font-kanit">
     <button id="btn-toggle-cheats" class="glass-card hover:bg-slate-800 text-slate-300 hover:text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border border-slate-700/80 shadow-md">
       <i class="fa-solid fa-screwdriver-wrench text-amber-400"></i>
-      <span>เครื่องมือทดสอบ (Dev Panel)</span>
+      <span>Dev Panel</span>
       <i id="cheat-chevron" class="fa-solid fa-chevron-up text-[10px] text-slate-400"></i>
     </button>
 
@@ -469,15 +434,11 @@
       </button>
 
       <button id="cheat-refill-hp" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-emerald-300 border border-slate-700 flex items-center gap-1.5">
-        <i class="fa-solid fa-heart"></i> เลือด & เกราะเต็ม
-      </button>
-
-      <button id="cheat-spawn-monster" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-rose-300 border border-slate-700 flex items-center gap-1.5">
-        <i class="fa-solid fa-ghost"></i> เสกมอนสเตอร์ 3D
+        <i class="fa-solid fa-heart"></i> เลือดเต็ม
       </button>
 
       <button id="cheat-spawn-boss" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-purple-300 border border-slate-700 flex items-center gap-1.5">
-        <i class="fa-solid fa-crown"></i> เสกบอส 3D ทันที
+        <i class="fa-solid fa-crown"></i> เสกบอสทันที
       </button>
 
       <button id="cheat-kill-all" class="px-2.5 py-1.5 rounded-xl bg-rose-900/50 hover:bg-rose-800/60 text-[11px] font-bold text-rose-200 border border-rose-800 flex items-center gap-1.5">
@@ -523,7 +484,7 @@
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(950, now);
             osc.frequency.exponentialRampToValueAtTime(150, now + 0.09);
-            gain.gain.setValueAtTime(0.28, now);
+            gain.gain.setValueAtTime(0.26, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
             osc.connect(gain);
             gain.connect(masterGain);
@@ -670,7 +631,72 @@
     const sound = new SoundEngine();
 
     /* ==========================================================================
-       2. COSTUMES & 3D LOBBY PREVIEW
+       2. STAGE DEFINITIONS & FLOW LINE CONFIGURATION
+       ========================================================================== */
+    const STAGES = [
+      {
+        id: 1,
+        name: 'Neon Outpost',
+        thaiTitle: 'ค่ายฝึกนีออน',
+        desc: 'กำจัดมอนสเตอร์ 15 ตัว เพื่อเผชิญหน้ากับบอส Cyber Golem 3D (HP 800)',
+        enemyQuota: 15,
+        themeColor: '#38bdf8',
+        boss: {
+          name: 'CYBER GOLEM 3D',
+          type: 'golem',
+          hp: 800,
+          color: 0x0284c7
+        }
+      },
+      {
+        id: 2,
+        name: 'Crimson Core',
+        thaiTitle: 'เหมืองลาวาเดือด',
+        desc: 'กำจัดมอนสเตอร์ 20 ตัว (มีมอนสเตอร์ยิงกรด) เพื่อเผชิญหน้ากับบอส Infernal Behemoth (HP 1,200)',
+        enemyQuota: 20,
+        themeColor: '#f43f5e',
+        boss: {
+          name: 'INFERNAL BEHEMOTH 3D',
+          type: 'behemoth',
+          hp: 1200,
+          color: 0xe11d48
+        }
+      },
+      {
+        id: 3,
+        name: 'Void Sanctum',
+        thaiTitle: 'วิหารมิติแห่งความมืด',
+        desc: 'กำจัดมอนสเตอร์ 25 ตัว (มีมอนสเตอร์ยักษ์เกราะหนา) เพื่อปลุกบอส Lord Demon 3D (HP 1,600)',
+        enemyQuota: 25,
+        themeColor: '#a855f7',
+        boss: {
+          name: 'LORD DEMON 3D',
+          type: 'demon',
+          hp: 1600,
+          color: 0x9333ea
+        }
+      },
+      {
+        id: 4,
+        name: 'Apocalypse Nexus',
+        thaiTitle: 'มิติล้างบางจักรวาล (Extreme)',
+        desc: 'กำจัดมอนสเตอร์ 30 ตัว เพื่อประลองศึกสุดท้ายกับมหาบอสจักรวาล Omega Colossus 3D (HP 2,400)',
+        enemyQuota: 30,
+        themeColor: '#eab308',
+        boss: {
+          name: 'OMEGA COLOSSUS 3D',
+          type: 'colossus',
+          hp: 2400,
+          color: 0xf59e0b
+        }
+      }
+    ];
+
+    let currentStageIndex = 0;
+    let unlockedStageIndex = parseInt(localStorage.getItem('monsterShooter_unlockedStage') || '0', 10);
+
+    /* ==========================================================================
+       3. COSTUMES & 3D WEAPON PREVIEW
        ========================================================================== */
     const COSTUMES = [
       { id: 'azure', name: 'Classic Azure', color: '#0284c7', hex: 0x0284c7 },
@@ -681,30 +707,26 @@
     ];
     let selectedCostume = COSTUMES[0];
 
-    // Helper to build 3D Cyber Gun model
     function createCyberGunMesh(colorHex) {
       const gunGroup = new THREE.Group();
 
-      // Gun Body Main
       const bodyGeo = new THREE.BoxGeometry(0.18, 0.22, 0.8);
       const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.2 });
       const body = new THREE.Mesh(bodyGeo, bodyMat);
       gunGroup.add(body);
 
-      // Gun Armor Plates with Costume Accent Color
       const armorGeo = new THREE.BoxGeometry(0.2, 0.12, 0.45);
       const armorMat = new THREE.MeshStandardMaterial({
         color: colorHex,
         metalness: 0.5,
         roughness: 0.3,
         emissive: colorHex,
-        emissiveIntensity: 0.3
+        emissiveIntensity: 0.35
       });
       const armor = new THREE.Mesh(armorGeo, armorMat);
       armor.position.set(0, 0.08, -0.05);
       gunGroup.add(armor);
 
-      // Dual Energy Barrels
       const barrelGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.45, 16);
       const barrelMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.1 });
       
@@ -718,25 +740,15 @@
       rightBarrel.position.set(-0.06, 0.02, -0.55);
       gunGroup.add(rightBarrel);
 
-      // Glowing Neon Energy Core
-      const coreGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.2, 8);
-      const coreMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
-      const core = new THREE.Mesh(coreGeo, coreMat);
-      core.rotation.z = Math.PI / 2;
-      core.position.set(0, 0.04, 0.1);
-      gunGroup.add(core);
-
-      // Muzzle flash point light
       const muzzleLight = new THREE.PointLight(0x38bdf8, 0, 8);
       muzzleLight.position.set(0, 0.02, -0.8);
       gunGroup.add(muzzleLight);
       gunGroup.userData.muzzleLight = muzzleLight;
-      gunGroup.userData.armorMat = armorMat;
 
       return gunGroup;
     }
 
-    // 3D Lobby Preview Scene
+    // 3D Preview in Costume Modal
     const previewCanvas = document.getElementById('previewCanvas');
     const previewRenderer = new THREE.WebGLRenderer({ canvas: previewCanvas, alpha: true, antialias: true });
     previewRenderer.setSize(144, 144);
@@ -766,7 +778,7 @@
     render3DPreview();
 
     /* ==========================================================================
-       3. 3D FPS MAIN SCENE & RENDERER SETUP
+       4. 3D FPS MAIN SCENE & RENDERER SETUP
        ========================================================================== */
     const container = document.getElementById('webgl-canvas-container');
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -777,111 +789,79 @@
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x050711);
-    scene.fog = new THREE.FogExp2(0x050711, 0.012);
+    scene.background = new THREE.Color(0x04060d);
+    scene.fog = new THREE.FogExp2(0x04060d, 0.012);
 
-    // Camera Rig & FPS Camera
     const cameraRig = new THREE.Group();
     scene.add(cameraRig);
 
     const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 300);
-    camera.position.set(0, 1.7, 0); // Eye height
+    camera.position.set(0, 1.7, 0);
     cameraRig.add(camera);
 
-    // FPS First-Person Gun Model attached to camera
     let playerGun = createCyberGunMesh(selectedCostume.hex);
     playerGun.position.set(0.32, -0.26, -0.6);
-    playerGun.scale.set(1, 1, 1);
     camera.add(playerGun);
 
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0x475569, 1.0);
-    scene.add(ambientLight);
-
+    scene.add(new THREE.AmbientLight(0x475569, 1.0));
     const sunLight = new THREE.DirectionalLight(0xbae6fd, 1.4);
     sunLight.position.set(40, 60, 30);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 1024;
-    sunLight.shadow.mapSize.height = 1024;
-    sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 150;
-    sunLight.shadow.camera.left = -60;
-    sunLight.shadow.camera.right = 60;
-    sunLight.shadow.camera.top = 60;
-    sunLight.shadow.camera.bottom = -60;
     scene.add(sunLight);
 
     /* ==========================================================================
-       4. 3D ARENA & OBSTACLES (5 PILLARS)
+       5. 3D ARENA & 5 OBSTACLES
        ========================================================================== */
-    const ARENA_SIZE = 90; // -45 to +45 bounds
+    const ARENA_SIZE = 90;
 
-    // Cyber Grid Floor
     const gridHelper = new THREE.GridHelper(ARENA_SIZE, 45, 0x0284c7, 0x1e293b);
     gridHelper.position.y = 0.01;
     scene.add(gridHelper);
 
     const floorGeo = new THREE.PlaneGeometry(ARENA_SIZE, ARENA_SIZE);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x0a0f1d, roughness: 0.8, metalness: 0.2 });
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x070b16, roughness: 0.8, metalness: 0.2 });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // Outer Perimeter Glowing Neon Walls
     const wallMat = new THREE.MeshStandardMaterial({
       color: 0x0f172a,
       emissive: 0x0284c7,
       emissiveIntensity: 0.15,
-      roughness: 0.5,
-      metalness: 0.5
+      roughness: 0.5
     });
 
-    function createArenaWall(width, height, depth, x, y, z) {
-      const wallGeo = new THREE.BoxGeometry(width, height, depth);
-      const wall = new THREE.Mesh(wallGeo, wallMat);
+    function createArenaWall(w, h, d, x, y, z) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
       wall.position.set(x, y, z);
-      wall.castShadow = true;
-      wall.receiveShadow = true;
       scene.add(wall);
     }
     const wallH = 6;
-    createArenaWall(ARENA_SIZE, wallH, 1, 0, wallH / 2, -ARENA_SIZE / 2); // North
-    createArenaWall(ARENA_SIZE, wallH, 1, 0, wallH / 2, ARENA_SIZE / 2);  // South
-    createArenaWall(1, wallH, ARENA_SIZE, -ARENA_SIZE / 2, wallH / 2, 0); // West
-    createArenaWall(1, wallH, ARENA_SIZE, ARENA_SIZE / 2, wallH / 2, 0);  // East
+    createArenaWall(ARENA_SIZE, wallH, 1, 0, wallH / 2, -ARENA_SIZE / 2);
+    createArenaWall(ARENA_SIZE, wallH, 1, 0, wallH / 2, ARENA_SIZE / 2);
+    createArenaWall(1, wallH, ARENA_SIZE, -ARENA_SIZE / 2, wallH / 2, 0);
+    createArenaWall(1, wallH, ARENA_SIZE, ARENA_SIZE / 2, wallH / 2, 0);
 
-    // 5 3D Obstacles / Pillars
     const OBSTACLE_DEFS = [
       { x: -20, z: -18, w: 5, d: 5, h: 8 },
       { x: 20, z: -18, w: 5, d: 5, h: 8 },
-      { x: 0, z: 0, w: 7, d: 7, h: 10 },    // Center Master Pillar
+      { x: 0, z: 0, w: 7, d: 7, h: 10 },
       { x: -20, z: 18, w: 5, d: 5, h: 8 },
       { x: 20, z: 18, w: 5, d: 5, h: 8 }
     ];
 
-    const obstacleMeshes = [];
-    const pillarMat = new THREE.MeshStandardMaterial({
-      color: 0x1e293b,
-      metalness: 0.7,
-      roughness: 0.3,
-      emissive: 0x38bdf8,
-      emissiveIntensity: 0.1
-    });
-
     OBSTACLE_DEFS.forEach(def => {
-      const geo = new THREE.BoxGeometry(def.w, def.h, def.d);
-      const mesh = new THREE.Mesh(geo, pillarMat);
-      mesh.position.set(def.x, def.h / 2, def.z);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      scene.add(mesh);
-      mesh.userData = { ...def, radius: Math.max(def.w, def.d) * 0.75 };
-      obstacleMeshes.push(mesh);
+      const pillar = new THREE.Mesh(
+        new THREE.BoxGeometry(def.w, def.h, def.d),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, emissive: 0x38bdf8, emissiveIntensity: 0.1 })
+      );
+      pillar.position.set(def.x, def.h / 2, def.z);
+      scene.add(pillar);
     });
 
     /* ==========================================================================
-       5. GAME STATE & CONSTANTS
+       6. GAME STATE & CONSTANTS
        ========================================================================== */
     const CRIT_CHANCE = 0.59;
     const CRIT_MULTIPLIER = 2.45;
@@ -890,21 +870,15 @@
     const gameState = {
       running: false,
       paused: false,
-      wave: 1,
-      monstersToSpawn: 20,
-      monstersAlive: 0,
+      bossActive: false,
+      monstersDefeated: 0,
+      monstersToSpawn: 15,
       godMode: false,
-      stats: {
-        score: 0,
-        kills: 0,
-        damageDealt: 0,
-        damageTaken: 0,
-        critHits: 0
-      }
+      stats: { score: 0, kills: 0, damageDealt: 0, damageTaken: 0, critHits: 0 }
     };
 
     /* ==========================================================================
-       6. PLAYER FPS LOGIC, POINTER LOCK & CONTROLS
+       7. PLAYER FPS LOGIC & CONTROLS
        ========================================================================== */
     class PlayerFPS {
       constructor() {
@@ -924,7 +898,7 @@
         this.boost = 0;
         this.maxBoost = 100;
 
-        this.speed = 15; // units / sec
+        this.speed = 15;
         this.dashCooldown = 0;
         this.dashMaxCooldown = 1.2;
         this.dashTimer = 0;
@@ -943,11 +917,9 @@
         if (this.fireCooldown > 0) this.fireCooldown -= dt;
         if (this.invulnerableTimer > 0) this.invulnerableTimer -= dt;
 
-        // Weapon recoil recovery
         this.recoilZ = THREE.MathUtils.lerp(this.recoilZ, 0, dt * 18);
         playerGun.position.z = -0.6 + this.recoilZ;
 
-        // Dash logic
         if (this.dashTimer > 0) {
           this.dashTimer -= dt;
           const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
@@ -958,7 +930,6 @@
           camera.fov = THREE.MathUtils.lerp(camera.fov, 75, dt * 12);
           camera.updateProjectionMatrix();
 
-          // Movement vector from input
           const moveDir = new THREE.Vector3();
           if (input.keys['KeyW'] || input.keys['ArrowUp']) moveDir.z -= 1;
           if (input.keys['KeyS'] || input.keys['ArrowDown']) moveDir.z += 1;
@@ -972,11 +943,9 @@
 
           if (moveDir.lengthSq() > 0) {
             moveDir.normalize();
-            // Transform movement relative to camera Yaw
             moveDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
             this.moveWithObstacleCollision(moveDir.x * this.speed * dt, moveDir.z * this.speed * dt);
 
-            // Weapon Bobbing
             this.weaponBobTimer += dt * 14;
             playerGun.position.y = -0.26 + Math.sin(this.weaponBobTimer) * 0.015;
             playerGun.position.x = 0.32 + Math.cos(this.weaponBobTimer * 0.5) * 0.01;
@@ -985,7 +954,6 @@
             playerGun.position.x = THREE.MathUtils.lerp(playerGun.position.x, 0.32, dt * 8);
           }
 
-          // Trigger Dash
           if (input.dashPressed && this.dashCooldown <= 0) {
             this.dashTimer = this.dashDuration;
             this.dashCooldown = this.dashMaxCooldown;
@@ -995,19 +963,16 @@
           }
         }
 
-        // Clamp inside arena walls
         const bound = ARENA_SIZE / 2 - 2;
         cameraRig.position.x = Math.max(-bound, Math.min(bound, cameraRig.position.x));
         cameraRig.position.z = Math.max(-bound, Math.min(bound, cameraRig.position.z));
-        cameraRig.position.y = 0; // Fixed ground height
+        cameraRig.position.y = 0;
 
-        // Shooting
         if ((input.mouseDown || input.mobileFiring) && this.fireCooldown <= 0) {
           this.shoot();
           this.fireCooldown = this.fireRate;
         }
 
-        // Ultimate Nuke
         if (input.nukePressed) {
           this.triggerNuke();
           input.nukePressed = false;
@@ -1024,7 +989,6 @@
           const halfD = obs.d / 2 + playerRadius;
           if (targetX > obs.x - halfW && targetX < obs.x + halfW &&
               targetZ > obs.z - halfD && targetZ < obs.z + halfD) {
-            // Simple push-out
             return;
           }
         }
@@ -1036,7 +1000,6 @@
         sound.play('shoot');
         this.recoilZ = 0.12;
 
-        // Flash muzzle light
         if (playerGun.userData.muzzleLight) {
           playerGun.userData.muzzleLight.intensity = 4;
           setTimeout(() => {
@@ -1044,10 +1007,7 @@
           }, 50);
         }
 
-        // Calculate direction from center of screen (Camera forward vector)
         const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
-        
-        // Spawn origin near gun tip
         const origin = cameraRig.position.clone().add(new THREE.Vector3(0, 1.55, 0)).addScaledVector(forward, 0.7);
 
         const isCrit = Math.random() < CRIT_CHANCE;
@@ -1061,7 +1021,6 @@
         this.boost = 0;
         sound.play('nuke');
 
-        // 3D Expanding Shockwave Mesh
         const shockGeo = new THREE.SphereGeometry(2, 32, 16);
         const shockMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.8, wireframe: true });
         const shockMesh = new THREE.Mesh(shockGeo, shockMat);
@@ -1070,24 +1029,17 @@
 
         let scale = 1;
         const expandInterval = setInterval(() => {
-          scale += 1.5;
+          scale += 1.6;
           shockMesh.scale.set(scale, scale, scale);
           shockMat.opacity -= 0.04;
           if (shockMat.opacity <= 0) {
             clearInterval(expandInterval);
             scene.remove(shockMesh);
-            shockGeo.dispose();
-            shockMat.dispose();
           }
         }, 16);
 
-        // Wipe out or heavily damage enemies
-        monsters.forEach(m => {
-          m.takeDamage(500, false, 'player');
-        });
-        if (boss && boss.alive) {
-          boss.takeDamage(450, false, 'player');
-        }
+        monsters.forEach(m => m.takeDamage(500, false, 'player'));
+        if (boss && boss.alive) boss.takeDamage(450, false, 'player');
       }
 
       takeDamage(amount) {
@@ -1108,9 +1060,7 @@
 
         if (amount > 0) {
           this.hp = Math.max(0, this.hp - amount);
-          if (this.hp <= 0) {
-            handleGameOver(false);
-          }
+          if (this.hp <= 0) handleGameOver(false);
         }
         this.invulnerableTimer = 0.25;
       }
@@ -1119,7 +1069,7 @@
     const player = new PlayerFPS();
 
     /* ==========================================================================
-       7. AI COMPANIONS (3D BOT-ALPHA & BOT-BLAZE)
+       8. AI COMPANION BOTS 3D
        ========================================================================== */
     class BotCompanion3D {
       constructor(id, name, colorHex, initialX, initialZ) {
@@ -1131,45 +1081,36 @@
         this.fireRate = 0.35;
         this.speed = 10;
 
-        // 3D Robot Mesh
         this.mesh = new THREE.Group();
-        
-        // Torso
         const bodyGeo = new THREE.BoxGeometry(0.8, 1.1, 0.5);
-        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.2 });
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8 });
         const body = new THREE.Mesh(bodyGeo, bodyMat);
         body.position.y = 1.2;
         this.mesh.add(body);
 
-        // Armor Plate Accent
         const chestGeo = new THREE.BoxGeometry(0.84, 0.5, 0.25);
         const chestMat = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.3 });
         const chest = new THREE.Mesh(chestGeo, chestMat);
         chest.position.set(0, 1.35, 0.2);
         this.mesh.add(chest);
 
-        // Head Visor
         const headGeo = new THREE.BoxGeometry(0.5, 0.45, 0.45);
-        const headMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
-        const head = new THREE.Mesh(headGeo, headMat);
+        const head = new THREE.Mesh(headGeo, new THREE.MeshStandardMaterial({ color: 0x0f172a }));
         head.position.y = 2.0;
         this.mesh.add(head);
 
         const visorGeo = new THREE.BoxGeometry(0.4, 0.15, 0.1);
-        const visorMat = new THREE.MeshBasicMaterial({ color: colorHex });
-        const visor = new THREE.Mesh(visorGeo, visorMat);
+        const visor = new THREE.Mesh(visorGeo, new THREE.MeshBasicMaterial({ color: colorHex }));
         visor.position.set(0, 2.0, 0.24);
         this.mesh.add(visor);
 
         this.mesh.position.set(initialX, 0, initialZ);
-        this.mesh.castShadow = true;
         scene.add(this.mesh);
       }
 
       update(dt) {
         if (this.fireCooldown > 0) this.fireCooldown -= dt;
 
-        // Find nearest enemy
         let target = null;
         let minDist = Infinity;
 
@@ -1193,11 +1134,9 @@
 
         if (target) {
           const targetPos = target.mesh.position.clone();
-          targetPos.y = 0; // Stay on plane
-
+          targetPos.y = 0;
           this.mesh.lookAt(targetPos.x, this.mesh.position.y, targetPos.z);
 
-          // Move maintaining distance ~14 units
           const dist = this.mesh.position.distanceTo(targetPos);
           const dir = new THREE.Vector3().subVectors(targetPos, this.mesh.position).normalize();
 
@@ -1207,19 +1146,14 @@
             this.mesh.position.addScaledVector(dir, -this.speed * dt);
           }
 
-          // Shoot
           if (this.fireCooldown <= 0 && dist < 35) {
             const shootOrigin = this.mesh.position.clone().add(new THREE.Vector3(0, 1.3, 0));
             const shootDir = new THREE.Vector3().subVectors(target.mesh.position, shootOrigin).normalize();
             bullets.push(new Bullet3D(shootOrigin, shootDir, this.id, BASE_BULLET_DAMAGE, false, this.colorHex));
             this.fireCooldown = this.fireRate;
           }
-        } else {
-          // Patrol slightly around spawn
-          this.mesh.rotation.y += dt * 0.8;
         }
 
-        // Clamp inside arena
         const bound = ARENA_SIZE / 2 - 3;
         this.mesh.position.x = Math.max(-bound, Math.min(bound, this.mesh.position.x));
         this.mesh.position.z = Math.max(-bound, Math.min(bound, this.mesh.position.z));
@@ -1232,7 +1166,7 @@
     ];
 
     /* ==========================================================================
-       8. 3D BULLETS, PICKUPS & PARTICLES
+       9. 3D PROJECTILES, PICKUPS & FLOATING TEXT
        ========================================================================== */
     class Bullet3D {
       constructor(origin, direction, shooter, damage, isCrit, colorHex) {
@@ -1242,12 +1176,11 @@
         this.damage = damage;
         this.isCrit = isCrit;
         this.colorHex = colorHex;
-        this.speed = (shooter === 'boss') ? 32 : 75; // units / sec
+        this.speed = (shooter === 'boss' || shooter === 'spitter') ? 32 : 75;
         this.radius = isCrit ? 0.45 : 0.28;
         this.alive = true;
         this.lifetime = 3.0;
 
-        // 3D Glowing Plasma Sphere
         const geo = new THREE.SphereGeometry(this.radius, 12, 8);
         const mat = new THREE.MeshBasicMaterial({ color: isCrit ? 0xfef08a : colorHex });
         this.mesh = new THREE.Mesh(geo, mat);
@@ -1266,14 +1199,12 @@
         this.position.add(moveStep);
         this.mesh.position.copy(this.position);
 
-        // Check arena bounds
         const bound = ARENA_SIZE / 2;
         if (Math.abs(this.position.x) > bound || Math.abs(this.position.z) > bound || this.position.y < 0 || this.position.y > 20) {
           this.destroy();
           return;
         }
 
-        // Check obstacle collision
         for (const obs of OBSTACLE_DEFS) {
           if (this.position.x > obs.x - obs.w / 2 && this.position.x < obs.x + obs.w / 2 &&
               this.position.z > obs.z - obs.d / 2 && this.position.z < obs.z + obs.d / 2 &&
@@ -1288,14 +1219,12 @@
         if (!this.alive) return;
         this.alive = false;
         scene.remove(this.mesh);
-        this.mesh.geometry.dispose();
-        this.mesh.material.dispose();
       }
     }
 
     class Pickup3D {
       constructor(x, z, type) {
-        this.type = type; // 'heal', 'shield', 'boost'
+        this.type = type;
         this.alive = true;
         this.lifetime = 16;
         this.radius = 1.4;
@@ -1312,16 +1241,8 @@
           geo = new THREE.ConeGeometry(0.5, 1.0, 6);
         }
 
-        const mat = new THREE.MeshStandardMaterial({
-          color: color,
-          emissive: color,
-          emissiveIntensity: 0.6,
-          metalness: 0.5,
-          roughness: 0.2
-        });
-        const inner = new THREE.Mesh(geo, mat);
-        this.mesh.add(inner);
-
+        const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.6 });
+        this.mesh.add(new THREE.Mesh(geo, mat));
         this.mesh.position.set(x, 1.2, z);
         scene.add(this.mesh);
       }
@@ -1332,11 +1253,9 @@
           this.destroy();
           return;
         }
-
         this.mesh.rotation.y += dt * 2;
         this.mesh.position.y = 1.2 + Math.sin(Date.now() * 0.005) * 0.25;
 
-        // Player collection
         const dist = cameraRig.position.distanceTo(new THREE.Vector3(this.mesh.position.x, 0, this.mesh.position.z));
         if (dist < 2.2) {
           this.collect();
@@ -1365,54 +1284,117 @@
       }
     }
 
+    const damageTextLayer = document.getElementById('damage-text-layer');
+
+    function create3DFloatingText(text, worldPos, color, isBig = false) {
+      const el = document.createElement('div');
+      el.className = `absolute font-kanit font-extrabold tracking-wide pointer-events-none transform -translate-x-1/2 -translate-y-1/2 ${isBig ? 'text-xl' : 'text-sm'}`;
+      el.style.color = color;
+      el.style.textShadow = `0 0 8px ${color}`;
+      el.textContent = text;
+      damageTextLayer.appendChild(el);
+
+      const pos = worldPos.clone();
+      let lifetime = isBig ? 1.0 : 0.7;
+      const initialLife = lifetime;
+
+      const anim = () => {
+        lifetime -= 0.016;
+        pos.y += 0.04;
+        const screenPos = pos.clone().project(camera);
+        const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        el.style.opacity = `${Math.max(0, lifetime / initialLife)}`;
+
+        if (lifetime > 0 && screenPos.z < 1) {
+          requestAnimationFrame(anim);
+        } else {
+          el.remove();
+        }
+      };
+      anim();
+    }
+
+    function triggerHitmarker() {
+      const ch = document.getElementById('crosshair');
+      ch.classList.add('hitmarker');
+      setTimeout(() => ch.classList.remove('hitmarker'), 150);
+    }
+
     /* ==========================================================================
-       9. 3D ENEMIES (MONSTER 3D & LORD DEMON BOSS 3D)
+       10. MULTIPLE 3D ENEMY TYPES (Creeper, Spitter, Brute)
        ========================================================================== */
     class Monster3D {
-      constructor(x, z) {
-        this.hp = 35;
-        this.maxHp = 35;
-        this.speed = Math.random() * 2 + 5.5; // units / sec
-        this.radius = 1.2;
+      constructor(x, z, type = 'creeper') {
+        this.type = type; // 'creeper', 'spitter', 'brute'
         this.alive = true;
         this.attackCooldown = 0;
-
-        // 3D Alien Monster Mesh
         this.mesh = new THREE.Group();
 
-        // Main Body Spiked Sphere
-        const bodyGeo = new THREE.DodecahedronGeometry(0.85);
-        const bodyMat = new THREE.MeshStandardMaterial({
-          color: 0x991b1b,
-          emissive: 0xef4444,
-          emissiveIntensity: 0.25,
-          roughness: 0.4
-        });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        body.position.y = 1.0;
-        this.mesh.add(body);
+        if (type === 'creeper') {
+          this.hp = 30;
+          this.maxHp = 30;
+          this.speed = 6.5;
+          this.radius = 1.1;
 
-        // Glowing Fiery Eyes
-        const eyeGeo = new THREE.SphereGeometry(0.16, 8, 8);
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+          const bodyGeo = new THREE.DodecahedronGeometry(0.85);
+          const bodyMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, emissive: 0xef4444, emissiveIntensity: 0.3 });
+          const body = new THREE.Mesh(bodyGeo, bodyMat);
+          body.position.y = 0.9;
+          this.mesh.add(body);
 
-        const eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeLeft.position.set(0.3, 1.2, 0.7);
-        this.mesh.add(eyeLeft);
+          const eyeGeo = new THREE.SphereGeometry(0.14, 8, 8);
+          const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+          const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+          eyeL.position.set(0.28, 1.1, 0.65);
+          const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+          eyeR.position.set(-0.28, 1.1, 0.65);
+          this.mesh.add(eyeL);
+          this.mesh.add(eyeR);
 
-        const eyeRight = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeRight.position.set(-0.3, 1.2, 0.7);
-        this.mesh.add(eyeRight);
+        } else if (type === 'spitter') {
+          this.hp = 45;
+          this.maxHp = 45;
+          this.speed = 4.2;
+          this.radius = 1.3;
+
+          const bodyGeo = new THREE.OctahedronGeometry(1.0);
+          const bodyMat = new THREE.MeshStandardMaterial({ color: 0x047857, emissive: 0x10b981, emissiveIntensity: 0.4 });
+          const body = new THREE.Mesh(bodyGeo, bodyMat);
+          body.position.y = 1.2;
+          this.mesh.add(body);
+
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), new THREE.MeshBasicMaterial({ color: 0x34d399 }));
+          eye.position.set(0, 1.4, 0.7);
+          this.mesh.add(eye);
+
+        } else if (type === 'brute') {
+          this.hp = 80;
+          this.maxHp = 80;
+          this.speed = 3.5;
+          this.radius = 1.8;
+
+          const bodyGeo = new THREE.BoxGeometry(1.8, 2.0, 1.4);
+          const bodyMat = new THREE.MeshStandardMaterial({ color: 0x581c87, emissive: 0x9333ea, emissiveIntensity: 0.3 });
+          const body = new THREE.Mesh(bodyGeo, bodyMat);
+          body.position.y = 1.3;
+          this.mesh.add(body);
+
+          const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.8), new THREE.MeshStandardMaterial({ color: 0x2e1065 }));
+          head.position.set(0, 2.5, 0.3);
+          this.mesh.add(head);
+        }
 
         this.mesh.position.set(x, 0, z);
-        this.mesh.castShadow = true;
         scene.add(this.mesh);
       }
 
       update(dt) {
         if (this.attackCooldown > 0) this.attackCooldown -= dt;
 
-        // Find nearest target among player & bots
         let targetPos = cameraRig.position.clone();
         let minDist = this.mesh.position.distanceTo(targetPos);
 
@@ -1428,17 +1410,25 @@
         this.mesh.lookAt(targetPos.x, this.mesh.position.y, targetPos.z);
 
         const dir = new THREE.Vector3().subVectors(targetPos, this.mesh.position).normalize();
-        this.mesh.position.addScaledVector(dir, this.speed * dt);
 
-        // Hover bobbing
-        this.mesh.position.y = Math.sin(Date.now() * 0.008 + this.speed) * 0.2;
-
-        // Melee attack on player
-        const distToPlayer = this.mesh.position.distanceTo(cameraRig.position);
-        if (distToPlayer < 2.0 && this.attackCooldown <= 0) {
-          player.takeDamage(12);
-          this.attackCooldown = 0.8;
+        if (this.type === 'spitter') {
+          if (minDist > 18) {
+            this.mesh.position.addScaledVector(dir, this.speed * dt);
+          } else if (this.attackCooldown <= 0) {
+            const shootOrigin = this.mesh.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+            const shootDir = new THREE.Vector3().subVectors(cameraRig.position.clone().add(new THREE.Vector3(0, 1.2, 0)), shootOrigin).normalize();
+            bullets.push(new Bullet3D(shootOrigin, shootDir, 'spitter', 12, false, 0x10b981));
+            this.attackCooldown = 1.8;
+          }
+        } else {
+          this.mesh.position.addScaledVector(dir, this.speed * dt);
+          if (minDist < this.radius + 1.2 && this.attackCooldown <= 0) {
+            player.takeDamage(this.type === 'brute' ? 22 : 12);
+            this.attackCooldown = 0.9;
+          }
         }
+
+        this.mesh.position.y = Math.sin(Date.now() * 0.006 + this.speed) * 0.2;
       }
 
       takeDamage(amount, isCrit, shooter) {
@@ -1471,7 +1461,9 @@
             bots[1].score += 100;
           }
 
-          // 40% item drop
+          gameState.monstersDefeated++;
+          checkBossSpawnCondition();
+
           if (Math.random() < 0.4) {
             const roll = Math.random();
             const type = roll < 0.35 ? 'heal' : (roll < 0.7 ? 'shield' : 'boost');
@@ -1487,92 +1479,96 @@
       }
     }
 
-    class BossLordDemon3D {
-      constructor() {
-        this.hp = 1200;
-        this.maxHp = 1200;
+    /* ==========================================================================
+       11. MULTI-STAGE 3D BOSS ENGINE
+       ========================================================================== */
+    class StageBoss3D {
+      constructor(stageData) {
+        this.stage = stageData;
+        this.hp = stageData.boss.hp;
+        this.maxHp = stageData.boss.hp;
         this.alive = true;
         this.patternTimer = 0;
         this.patternIndex = 0;
         this.radius = 3.5;
 
-        // 3D Demon Boss Mesh
         this.mesh = new THREE.Group();
 
-        // Demon Torso
-        const bodyGeo = new THREE.SphereGeometry(2.4, 24, 16);
-        const bodyMat = new THREE.MeshStandardMaterial({
-          color: 0x4c0519,
-          emissive: 0xbe123c,
-          emissiveIntensity: 0.3,
-          roughness: 0.3
-        });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        body.position.y = 5.0;
-        this.mesh.add(body);
+        if (stageData.boss.type === 'golem') {
+          // Cyber Golem (Mech Boss)
+          const body = new THREE.Mesh(
+            new THREE.BoxGeometry(4.0, 4.0, 3.0),
+            new THREE.MeshStandardMaterial({ color: 0x0369a1, metalness: 0.9, emissive: 0x38bdf8, emissiveIntensity: 0.3 })
+          );
+          body.position.y = 4.0;
+          this.mesh.add(body);
 
-        // Demon Horns
-        const hornGeo = new THREE.ConeGeometry(0.6, 2.2, 8);
-        const hornMat = new THREE.MeshStandardMaterial({ color: 0x881337, roughness: 0.1 });
+          const cannonL = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 3.0, 16), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+          cannonL.rotation.x = Math.PI / 2;
+          cannonL.position.set(2.4, 3.8, 1.0);
+          this.mesh.add(cannonL);
 
-        const hornLeft = new THREE.Mesh(hornGeo, hornMat);
-        hornLeft.position.set(1.4, 7.0, 0.4);
-        hornLeft.rotation.z = -0.4;
-        this.mesh.add(hornLeft);
+          const cannonR = cannonL.clone();
+          cannonR.position.x = -2.4;
+          this.mesh.add(cannonR);
 
-        const hornRight = new THREE.Mesh(hornGeo, hornMat);
-        hornRight.position.set(-1.4, 7.0, 0.4);
-        hornRight.rotation.z = 0.4;
-        this.mesh.add(hornRight);
+        } else if (stageData.boss.type === 'behemoth') {
+          // Infernal Behemoth (Fire demon beast)
+          const body = new THREE.Mesh(
+            new THREE.SphereGeometry(3.0, 16, 16),
+            new THREE.MeshStandardMaterial({ color: 0x991b1b, emissive: 0xf97316, emissiveIntensity: 0.4 })
+          );
+          body.position.y = 4.5;
+          this.mesh.add(body);
 
-        // Glowing Fiery Demon Eyes
-        const eyeGeo = new THREE.SphereGeometry(0.4, 12, 8);
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+          const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.6, 2.5, 8), new THREE.MeshStandardMaterial({ color: 0x450a0a }));
+          hornL.position.set(1.6, 6.8, 0.5);
+          hornL.rotation.z = -0.4;
+          this.mesh.add(hornL);
 
-        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeL.position.set(0.8, 5.6, 2.1);
-        this.mesh.add(eyeL);
+          const hornR = hornL.clone();
+          hornR.position.x = -1.6;
+          hornR.rotation.z = 0.4;
+          this.mesh.add(hornR);
 
-        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeR.position.set(-0.8, 5.6, 2.1);
-        this.mesh.add(eyeR);
+        } else if (stageData.boss.type === 'demon' || stageData.boss.type === 'colossus') {
+          // Lord Demon / Omega Colossus (Winged Overlord)
+          const body = new THREE.Mesh(
+            new THREE.SphereGeometry(2.6, 24, 16),
+            new THREE.MeshStandardMaterial({ color: 0x3b0764, emissive: 0xa855f7, emissiveIntensity: 0.4 })
+          );
+          body.position.y = 5.0;
+          this.mesh.add(body);
 
-        // Flapping 3D Demon Wings
-        const wingGeo = new THREE.BoxGeometry(4.5, 3.2, 0.15);
-        const wingMat = new THREE.MeshStandardMaterial({
-          color: 0x1f0209,
-          emissive: 0xe11d48,
-          emissiveIntensity: 0.2
-        });
+          const wingGeo = new THREE.BoxGeometry(5.0, 3.5, 0.15);
+          const wingMat = new THREE.MeshStandardMaterial({ color: 0x1f0209, emissive: 0xe11d48, emissiveIntensity: 0.3 });
 
-        this.leftWing = new THREE.Mesh(wingGeo, wingMat);
-        this.leftWing.position.set(3.8, 5.5, -0.6);
-        this.mesh.add(this.leftWing);
+          this.leftWing = new THREE.Mesh(wingGeo, wingMat);
+          this.leftWing.position.set(4.2, 5.5, -0.6);
+          this.mesh.add(this.leftWing);
 
-        this.rightWing = new THREE.Mesh(wingGeo, wingMat);
-        this.rightWing.position.set(-3.8, 5.5, -0.6);
-        this.mesh.add(this.rightWing);
+          this.rightWing = new THREE.Mesh(wingGeo, wingMat);
+          this.rightWing.position.set(-4.2, 5.5, -0.6);
+          this.mesh.add(this.rightWing);
+        }
 
         this.mesh.position.set(0, 0, -25);
         scene.add(this.mesh);
       }
 
       update(dt) {
-        // Flap wings
-        const wingAngle = Math.sin(Date.now() * 0.006) * 0.45;
-        this.leftWing.rotation.y = wingAngle;
-        this.rightWing.rotation.y = -wingAngle;
+        if (this.leftWing && this.rightWing) {
+          const wingAngle = Math.sin(Date.now() * 0.006) * 0.45;
+          this.leftWing.rotation.y = wingAngle;
+          this.rightWing.rotation.y = -wingAngle;
+        }
 
-        // Hover float
         this.mesh.position.y = Math.sin(Date.now() * 0.003) * 0.8;
-
-        // Face player
         const targetPos = cameraRig.position.clone();
-        this.mesh.lookAt(targetPos.x, this.mesh.position.y + 4.5, targetPos.z);
+        this.mesh.lookAt(targetPos.x, this.mesh.position.y + 4.0, targetPos.z);
 
-        // Attack pattern cycles
         this.patternTimer += dt;
-        if (this.patternTimer > 2.5) {
+        if (this.patternTimer > 2.3) {
           this.executeAttack(this.patternIndex);
           this.patternIndex = (this.patternIndex + 1) % 3;
           this.patternTimer = 0;
@@ -1581,10 +1577,9 @@
 
       executeAttack(index) {
         sound.play('bossAttack');
-        const center = this.mesh.position.clone().add(new THREE.Vector3(0, 5, 0));
+        const center = this.mesh.position.clone().add(new THREE.Vector3(0, 4.5, 0));
 
         if (index === 0) {
-          // 1. Radial 14-bullet 3D Ring
           const count = 14;
           for (let i = 0; i < count; i++) {
             const angle = (i / count) * Math.PI * 2;
@@ -1592,14 +1587,12 @@
             bullets.push(new Bullet3D(center, dir, 'boss', 16, false, 0xf43f5e));
           }
         } else if (index === 1) {
-          // 2. Focused Spread (3 bullets towards player)
           const aimDir = new THREE.Vector3().subVectors(cameraRig.position.clone().add(new THREE.Vector3(0, 1.2, 0)), center).normalize();
           [-0.15, 0, 0.15].forEach(offset => {
             const d = aimDir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), offset);
             bullets.push(new Bullet3D(center, d, 'boss', 20, false, 0xfb7185));
           });
         } else if (index === 2) {
-          // 3. Spiral Barrage (8 bullets in quick rotation)
           for (let i = 0; i < 8; i++) {
             setTimeout(() => {
               if (this.alive && gameState.running && !gameState.paused) {
@@ -1636,6 +1629,12 @@
           else if (shooter === 'bot1') bots[0].score += 1500;
           else if (shooter === 'bot2') bots[1].score += 1500;
 
+          // Unlock next stage if cleared
+          if (currentStageIndex >= unlockedStageIndex && unlockedStageIndex < STAGES.length - 1) {
+            unlockedStageIndex = currentStageIndex + 1;
+            localStorage.setItem('monsterShooter_unlockedStage', unlockedStageIndex.toString());
+          }
+
           setTimeout(() => {
             handleGameOver(true);
           }, 600);
@@ -1650,98 +1649,66 @@
     let boss = null;
 
     /* ==========================================================================
-       10. 3D FLOATING DAMAGE TEXT (PROJECTED OVERLAY)
-       ========================================================================== */
-    const damageTextLayer = document.getElementById('damage-text-layer');
-
-    function create3DFloatingText(text, worldPos, color, isBig = false) {
-      const el = document.createElement('div');
-      el.className = `absolute font-kanit font-extrabold tracking-wide transition-all pointer-events-none transform -translate-x-1/2 -translate-y-1/2 ${isBig ? 'text-xl' : 'text-sm'}`;
-      el.style.color = color;
-      el.style.textShadow = `0 0 8px ${color}`;
-      el.textContent = text;
-      damageTextLayer.appendChild(el);
-
-      const pos = worldPos.clone();
-      let lifetime = isBig ? 1.0 : 0.7;
-      const initialLife = lifetime;
-
-      const anim = () => {
-        lifetime -= 0.016;
-        pos.y += 0.04;
-
-        // Project 3D coordinate to 2D Screen
-        const screenPos = pos.clone().project(camera);
-        const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
-        const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
-
-        el.style.left = `${x}px`;
-        el.style.top = `${y}px`;
-        el.style.opacity = `${Math.max(0, lifetime / initialLife)}`;
-
-        if (lifetime > 0 && screenPos.z < 1) {
-          requestAnimationFrame(anim);
-        } else {
-          el.remove();
-        }
-      };
-      anim();
-    }
-
-    function triggerHitmarker() {
-      const ch = document.getElementById('crosshair');
-      ch.classList.add('hitmarker');
-      setTimeout(() => ch.classList.remove('hitmarker'), 150);
-    }
-
-    /* ==========================================================================
-       11. SPAWNER & WAVE PROGRESSION
+       12. STAGE PROGRESSION & SPAWNER
        ========================================================================== */
     let spawnTimer = 0;
 
-    function spawnMonster3D() {
+    function spawnRandomMonster() {
+      const currentStage = STAGES[currentStageIndex];
       const angle = Math.random() * Math.PI * 2;
       const dist = ARENA_SIZE / 2 - 6;
       const x = Math.cos(angle) * dist;
       const z = Math.sin(angle) * dist;
-      monsters.push(new Monster3D(x, z));
-      gameState.monstersAlive++;
+
+      // Select enemy type based on stage
+      let type = 'creeper';
+      if (currentStage.id >= 2 && Math.random() < 0.4) type = 'spitter';
+      if (currentStage.id >= 3 && Math.random() < 0.3) type = 'brute';
+
+      monsters.push(new Monster3D(x, z, type));
     }
 
-    function checkWaveProgression(dt) {
-      if (gameState.wave === 1) {
-        spawnTimer += dt;
-        if (spawnTimer > 0.9 && gameState.monstersToSpawn > 0 && monsters.length < 9) {
-          spawnMonster3D();
-          gameState.monstersToSpawn--;
-          spawnTimer = 0;
-        }
+    function checkBossSpawnCondition() {
+      const currentStage = STAGES[currentStageIndex];
+      if (!gameState.bossActive && gameState.monstersDefeated >= currentStage.enemyQuota) {
+        spawnStageBoss();
+      }
+    }
 
-        if (gameState.monstersToSpawn === 0 && monsters.length === 0) {
-          transitionToWave2();
+    function spawnStageBoss() {
+      gameState.bossActive = true;
+      const currentStage = STAGES[currentStageIndex];
+
+      document.getElementById('hud-monster-quota-box').classList.add('hidden');
+      document.getElementById('hud-boss-container').classList.remove('hidden');
+      document.getElementById('hud-boss-container').classList.add('flex');
+      document.getElementById('hud-boss-name').innerHTML = `<i class="fa-solid fa-crown mr-1 text-amber-400"></i> ${currentStage.boss.name}`;
+
+      sound.play('bossAttack');
+      create3DFloatingText(`WARNING: ${currentStage.boss.name} AWAKENED!`, cameraRig.position, '#f43f5e', true);
+
+      boss = new StageBoss3D(currentStage);
+    }
+
+    function updateWaveProgression(dt) {
+      const currentStage = STAGES[currentStageIndex];
+      if (!gameState.bossActive) {
+        spawnTimer += dt;
+        if (spawnTimer > 1.0 && monsters.length < 8 && gameState.monstersDefeated + monsters.length < currentStage.enemyQuota + 5) {
+          spawnRandomMonster();
+          spawnTimer = 0;
         }
       }
     }
 
-    function transitionToWave2() {
-      gameState.wave = 2;
-      document.getElementById('hud-wave-title').textContent = 'WAVE 2: LORD DEMON 3D (BOSS)';
-      document.getElementById('hud-boss-container').classList.remove('hidden');
-      document.getElementById('hud-boss-container').classList.add('flex');
-      sound.play('bossAttack');
-
-      boss = new BossLordDemon3D();
-    }
-
     /* ==========================================================================
-       12. COLLISIONS
+       13. COLLISIONS
        ========================================================================== */
     function checkCollisions() {
       bullets.forEach(b => {
         if (!b.alive) return;
 
-        if (b.shooter !== 'boss') {
-          // Check monsters
+        if (b.shooter !== 'boss' && b.shooter !== 'spitter') {
           for (const m of monsters) {
             if (m.alive) {
               const dist = b.position.distanceTo(m.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)));
@@ -1753,16 +1720,14 @@
             }
           }
 
-          // Check boss
           if (b.alive && boss && boss.alive) {
-            const dist = b.position.distanceTo(boss.mesh.position.clone().add(new THREE.Vector3(0, 5, 0)));
+            const dist = b.position.distanceTo(boss.mesh.position.clone().add(new THREE.Vector3(0, 4, 0)));
             if (dist < boss.radius + b.radius) {
               boss.takeDamage(b.damage, b.isCrit, b.shooter);
               b.destroy();
             }
           }
         } else {
-          // Boss bullet hitting player
           const dist = b.position.distanceTo(cameraRig.position.clone().add(new THREE.Vector3(0, 1.4, 0)));
           if (dist < 1.4 + b.radius) {
             player.takeDamage(b.damage);
@@ -1773,7 +1738,7 @@
     }
 
     /* ==========================================================================
-       13. INPUT & POINTER LOCK EVENT LISTENERS
+       14. INPUT LISTENERS
        ========================================================================== */
     const input = {
       keys: {},
@@ -1798,15 +1763,10 @@
 
     window.addEventListener('mousemove', (e) => {
       if (!isPointerLocked || !gameState.running || gameState.paused) return;
-
       const sensitivity = 0.0022;
       player.yaw -= e.movementX * sensitivity;
       player.pitch -= e.movementY * sensitivity;
-
-      // Clamp vertical pitch (-80 to +80 deg)
-      const maxPitch = Math.PI / 2.2;
-      player.pitch = Math.max(-maxPitch, Math.min(maxPitch, player.pitch));
-
+      player.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, player.pitch));
       cameraRig.rotation.y = player.yaw;
       camera.rotation.x = player.pitch;
     });
@@ -1836,7 +1796,6 @@
       input.keys[e.code] = false;
     });
 
-    // Resize handling
     window.addEventListener('resize', () => {
       const w = container.clientWidth;
       const h = container.clientHeight;
@@ -1846,7 +1805,7 @@
     });
 
     /* ==========================================================================
-       14. MAIN 3D RENDER & UPDATE LOOP
+       15. MAIN LOOP
        ========================================================================== */
     let lastTime = performance.now();
 
@@ -1870,7 +1829,7 @@
         pickups = pickups.filter(p => p.alive);
 
         checkCollisions();
-        checkWaveProgression(dt);
+        updateWaveProgression(dt);
         updateHUD();
       }
 
@@ -1880,7 +1839,7 @@
     requestAnimationFrame(animate);
 
     /* ==========================================================================
-       15. HUD & UI MANAGEMENT
+       16. HUD & FLOW LINE UI MANAGEMENT
        ========================================================================== */
     function updateHUD() {
       document.getElementById('hud-hp-bar').style.width = `${(player.hp / player.maxHp) * 100}%`;
@@ -1889,9 +1848,17 @@
       document.getElementById('hud-shield-text').textContent = `${Math.round(player.shield)}/${player.maxShield}`;
 
       const boostPct = Math.round(player.boost);
-      const boostBar = document.getElementById('hud-boost-bar');
-      boostBar.style.width = `${boostPct}%`;
+      document.getElementById('hud-boost-bar').style.width = `${boostPct}%`;
       document.getElementById('hud-boost-text').textContent = `${boostPct}%`;
+
+      const currentStage = STAGES[currentStageIndex];
+      document.getElementById('hud-quota-text').textContent = `${gameState.monstersDefeated} / ${currentStage.enemyQuota}`;
+
+      if (boss && boss.alive) {
+        const bossPct = Math.max(0, (boss.hp / boss.maxHp) * 100);
+        document.getElementById('hud-boss-hp-bar').style.width = `${bossPct}%`;
+        document.getElementById('hud-boss-hp-text').textContent = `${Math.max(0, Math.round(boss.hp))} / ${boss.maxHp}`;
+      }
 
       const dashBadge = document.getElementById('hud-dash-badge');
       if (player.dashCooldown <= 0) {
@@ -1900,18 +1867,6 @@
       } else {
         dashBadge.textContent = `DASH: ${player.dashCooldown.toFixed(1)}s`;
         dashBadge.className = 'px-2 py-0.5 rounded-full bg-slate-800 text-[11px] font-mono text-slate-400 border border-slate-700';
-      }
-
-      if (gameState.wave === 1) {
-        document.getElementById('hud-enemies-left').textContent = `${gameState.monstersToSpawn + monsters.length}`;
-      } else {
-        document.getElementById('hud-enemies-left').textContent = boss && boss.alive ? '1 (LORD DEMON 3D)' : '0';
-      }
-
-      if (boss && boss.alive) {
-        const bossPct = Math.max(0, (boss.hp / boss.maxHp) * 100);
-        document.getElementById('hud-boss-hp-bar').style.width = `${bossPct}%`;
-        document.getElementById('hud-boss-hp-text').textContent = `${Math.max(0, Math.round(boss.hp))} / ${boss.maxHp}`;
       }
 
       updateLiveLeaderboard();
@@ -1925,8 +1880,7 @@
       ];
       list.sort((a, b) => b.score - a.score);
 
-      const container = document.getElementById('hud-leaderboard-list');
-      container.innerHTML = list.map((item, idx) => `
+      document.getElementById('hud-leaderboard-list').innerHTML = list.map((item, idx) => `
         <div class="flex items-center justify-between px-2 py-1 rounded-lg ${item.isPlayer ? 'bg-sky-500/20 border border-sky-400/40' : 'bg-slate-800/40'}">
           <div class="flex items-center gap-1.5 truncate">
             <span class="font-bold font-mono ${idx === 0 ? 'text-amber-400' : 'text-slate-400'}">#${idx + 1}</span>
@@ -1938,23 +1892,77 @@
       `).join('');
     }
 
+    // Render Stage Flow Line Nodes
+    function renderFlowLineUI() {
+      const container = document.getElementById('flow-stages-row');
+      container.innerHTML = '';
+
+      STAGES.forEach((st, idx) => {
+        const isUnlocked = idx <= unlockedStageIndex;
+        const isSelected = idx === currentStageIndex;
+        const isCleared = idx < unlockedStageIndex;
+
+        const node = document.createElement('div');
+        node.className = `flex flex-col items-center cursor-pointer transition-all duration-200 transform ${isSelected ? 'scale-105' : 'hover:scale-102'} ${!isUnlocked ? 'opacity-50 cursor-not-allowed' : ''}`;
+
+        node.innerHTML = `
+          <div class="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex flex-col items-center justify-center p-2 border-2 transition-all shadow-xl ${
+            isSelected 
+              ? 'bg-sky-500/20 border-sky-400 shadow-sky-500/30' 
+              : isCleared 
+                ? 'bg-emerald-950/40 border-emerald-500/60' 
+                : isUnlocked 
+                  ? 'bg-slate-800/80 border-slate-600' 
+                  : 'bg-slate-900/40 border-slate-800'
+          }">
+            ${isCleared ? '<span class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs shadow"><i class="fa-solid fa-check"></i></span>' : ''}
+            ${!isUnlocked ? '<span class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center text-xs"><i class="fa-solid fa-lock"></i></span>' : ''}
+            
+            <i class="fa-solid ${idx === 0 ? 'fa-mountain-city' : (idx === 1 ? 'fa-fire' : (idx === 2 ? 'fa-skull' : 'fa-meteor'))} text-2xl ${isSelected ? 'text-sky-400' : (isCleared ? 'text-emerald-400' : 'text-slate-400')}"></i>
+            <span class="text-[10px] font-bold uppercase tracking-wider mt-1 text-slate-300">STAGE ${st.id}</span>
+          </div>
+          <span class="text-xs font-bold mt-2 text-white">${st.thaiTitle}</span>
+          <span class="text-[10px] text-slate-400 font-mono">บอส: ${st.boss.hp} HP</span>
+        `;
+
+        if (isUnlocked) {
+          node.addEventListener('click', () => {
+            currentStageIndex = idx;
+            renderFlowLineUI();
+            updateSelectedStageCard();
+          });
+        }
+
+        container.appendChild(node);
+      });
+
+      // Update Flow Line Active percentage
+      const pct = (unlockedStageIndex / (STAGES.length - 1)) * 76 + 12;
+      document.getElementById('flow-line-active').setAttribute('x2', `${Math.min(pct, 88)}%`);
+    }
+
+    function updateSelectedStageCard() {
+      const st = STAGES[currentStageIndex];
+      document.getElementById('stage-detail-badge').textContent = `STAGE ${st.id}`;
+      document.getElementById('stage-detail-title').textContent = `${st.name} (${st.thaiTitle})`;
+      document.getElementById('stage-detail-desc').textContent = st.desc;
+    }
+
     /* ==========================================================================
-       16. GAME STATE TRANSITIONS
+       17. GAME STATE TRANSITIONS
        ========================================================================== */
-    function startGame() {
+    function startStageGame() {
       sound.init();
       gameState.running = true;
       gameState.paused = false;
-      gameState.wave = 1;
-      gameState.monstersToSpawn = 20;
-      gameState.monstersAlive = 0;
+      gameState.bossActive = false;
+      gameState.monstersDefeated = 0;
       gameState.stats = { score: 0, kills: 0, damageDealt: 0, damageTaken: 0, critHits: 0 };
 
       player.reset();
       bots[0].score = 0;
       bots[1].score = 0;
 
-      // Clean existing entities
       monsters.forEach(m => m.destroy());
       monsters = [];
       bullets.forEach(b => b.destroy());
@@ -1966,20 +1974,20 @@
         boss = null;
       }
 
+      const currentStage = STAGES[currentStageIndex];
       document.getElementById('hud-player-dot').style.backgroundColor = selectedCostume.color;
-      document.getElementById('hud-wave-title').textContent = 'WAVE 1: MONSTER HORDE 3D';
+      document.getElementById('hud-stage-num').textContent = `STAGE ${currentStage.id}`;
+      document.getElementById('hud-wave-title').textContent = currentStage.name.toUpperCase();
+      document.getElementById('hud-monster-quota-box').classList.remove('hidden');
       document.getElementById('hud-boss-container').classList.add('hidden');
 
-      document.getElementById('modal-lobby').classList.add('hidden');
+      document.getElementById('modal-stage-select').classList.add('hidden');
       document.getElementById('modal-pause').classList.add('hidden');
       document.getElementById('modal-gameover').classList.add('hidden');
       document.getElementById('game-hud').classList.remove('hidden');
       document.getElementById('crosshair').classList.remove('hidden');
 
-      // Request Pointer Lock for FPS
-      try {
-        document.body.requestPointerLock();
-      } catch (err) {}
+      try { document.body.requestPointerLock(); } catch (err) {}
     }
 
     function togglePause() {
@@ -2001,66 +2009,60 @@
       document.getElementById('crosshair').classList.add('hidden');
       document.getElementById('modal-gameover').classList.remove('hidden');
 
+      const nextBtn = document.getElementById('btn-next-stage');
+
       if (isVictory) {
         sound.play('victory');
         document.getElementById('result-icon-badge').innerHTML = '<i class="fa-solid fa-trophy text-amber-400"></i>';
         document.getElementById('result-icon-badge').className = 'w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-3 shadow-lg bg-amber-500/20 border border-amber-400/50';
-        document.getElementById('result-title').textContent = 'VICTORY! ชัยชนะแห่ง 3D FPS';
+        document.getElementById('result-title').textContent = `STAGE ${STAGES[currentStageIndex].id} CLEARED!`;
         document.getElementById('result-title').className = 'text-3xl font-black tracking-tight mb-0.5 text-amber-400';
-        document.getElementById('result-subtitle').textContent = 'คุณและเหล่าบอทปราบ Lord Demon 3D สำเร็จอย่างยิ่งใหญ่!';
+        document.getElementById('result-subtitle').textContent = `คุณกำจัด ${STAGES[currentStageIndex].boss.name} และผ่านด่านสำเร็จ!`;
+
+        if (currentStageIndex < STAGES.length - 1) {
+          nextBtn.classList.remove('hidden');
+        } else {
+          nextBtn.classList.add('hidden');
+          document.getElementById('result-subtitle').textContent = 'ยินดีด้วย! คุณพิชิตครบทุกด่านและกลายเป็นสุดยอดนักรบจักรวาล!';
+        }
       } else {
         sound.play('defeat');
         document.getElementById('result-icon-badge').innerHTML = '<i class="fa-solid fa-skull text-rose-400"></i>';
         document.getElementById('result-icon-badge').className = 'w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-3 shadow-lg bg-rose-500/20 border border-rose-400/50';
-        document.getElementById('result-title').textContent = 'GAME OVER! คุณพ่ายแพ้';
+        document.getElementById('result-title').textContent = 'GAME OVER! ภารกิจล้มเหลว';
         document.getElementById('result-title').className = 'text-3xl font-black tracking-tight mb-0.5 text-rose-500';
-        document.getElementById('result-subtitle').textContent = 'พลังชีวิตหมดลงในสมรภูมิ 3 มิติ ฝึกฝนและกลับมาลุยใหม่!';
+        document.getElementById('result-subtitle').textContent = 'พลังชีวิตของคุณหมดลง ฝึกฝนและกลับมาลุยด่านนี้ใหม่!';
+        nextBtn.classList.add('hidden');
       }
 
       document.getElementById('stat-score').textContent = gameState.stats.score;
       document.getElementById('stat-kills').textContent = gameState.stats.kills;
       document.getElementById('stat-damage-dealt').textContent = gameState.stats.damageDealt;
       document.getElementById('stat-crits').textContent = gameState.stats.critHits;
-
-      const list = [
-        { name: 'คุณ (Player 3D)', score: gameState.stats.score, color: selectedCostume.color, isPlayer: true },
-        { name: bots[0].name, score: bots[0].score, color: '#9333ea', isPlayer: false },
-        { name: bots[1].name, score: bots[1].score, color: '#f97316', isPlayer: false }
-      ];
-      list.sort((a, b) => b.score - a.score);
-
-      document.getElementById('final-leaderboard-list').innerHTML = list.map((item, idx) => `
-        <div class="flex items-center justify-between p-2 rounded-xl ${item.isPlayer ? 'bg-sky-500/20 border border-sky-400/40' : 'bg-slate-800/50'}">
-          <div class="flex items-center gap-2">
-            <span class="font-bold font-mono text-sm ${idx === 0 ? 'text-amber-400' : 'text-slate-400'}">#${idx + 1}</span>
-            <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${item.color}"></span>
-            <span class="font-bold text-white">${item.name}</span>
-          </div>
-          <span class="font-mono font-extrabold text-amber-300 text-sm">${item.score} แต้ม</span>
-        </div>
-      `).join('');
     }
 
-    function returnToLobby() {
+    function returnToFlowLine() {
       gameState.running = false;
       gameState.paused = false;
       document.exitPointerLock();
       document.getElementById('crosshair').classList.add('hidden');
-      document.getElementById('modal-lobby').classList.remove('hidden');
+      document.getElementById('modal-stage-select').classList.remove('hidden');
       document.getElementById('modal-pause').classList.add('hidden');
       document.getElementById('modal-gameover').classList.add('hidden');
       document.getElementById('game-hud').classList.add('hidden');
+      renderFlowLineUI();
+      updateSelectedStageCard();
     }
 
     /* ==========================================================================
-       17. LOBBY COSTUME BUTTONS INITIALIZATION
+       18. COSTUME SETUP & EVENT BINDINGS
        ========================================================================== */
     const costumeButtonsContainer = document.getElementById('costume-buttons-container');
     const costumeNameLabel = document.getElementById('costume-name-label');
 
     COSTUMES.forEach(c => {
       const btn = document.createElement('button');
-      btn.className = `w-8 h-8 rounded-full border-2 transition-all duration-150 transform hover:scale-110 shadow-md ${c.id === selectedCostume.id ? 'border-white scale-110 ring-2 ring-sky-400' : 'border-transparent opacity-80'}`;
+      btn.className = `w-9 h-9 rounded-full border-2 transition-all duration-150 transform hover:scale-110 shadow-md ${c.id === selectedCostume.id ? 'border-white scale-110 ring-2 ring-sky-400' : 'border-transparent opacity-80'}`;
       btn.style.backgroundColor = c.color;
       btn.title = c.name;
 
@@ -2069,15 +2071,13 @@
         costumeNameLabel.textContent = `สีปัจจุบัน: ${c.name}`;
         
         Array.from(costumeButtonsContainer.children).forEach((b, idx) => {
-          b.className = `w-8 h-8 rounded-full border-2 transition-all duration-150 transform hover:scale-110 shadow-md ${COSTUMES[idx].id === c.id ? 'border-white scale-110 ring-2 ring-sky-400' : 'border-transparent opacity-80'}`;
+          b.className = `w-9 h-9 rounded-full border-2 transition-all duration-150 transform hover:scale-110 shadow-md ${COSTUMES[idx].id === c.id ? 'border-white scale-110 ring-2 ring-sky-400' : 'border-transparent opacity-80'}`;
         });
 
-        // Update 3D preview model
         previewScene.remove(previewGun);
         previewGun = createCyberGunMesh(c.hex);
         previewScene.add(previewGun);
 
-        // Update First-Person in-game Gun model
         camera.remove(playerGun);
         playerGun = createCyberGunMesh(c.hex);
         playerGun.position.set(0.32, -0.26, -0.6);
@@ -2089,14 +2089,39 @@
       costumeButtonsContainer.appendChild(btn);
     });
 
-    // Volume Slider
+    // Costume modal open/close
+    document.getElementById('btn-open-costume-modal').addEventListener('click', () => {
+      document.getElementById('modal-costume').classList.remove('hidden');
+    });
+    document.getElementById('btn-close-costume').addEventListener('click', () => {
+      document.getElementById('modal-costume').classList.add('hidden');
+    });
+    document.getElementById('btn-costume-done').addEventListener('click', () => {
+      document.getElementById('modal-costume').classList.add('hidden');
+    });
+
+    // Flow line deploy
+    document.getElementById('btn-deploy-stage').addEventListener('click', startStageGame);
+    document.getElementById('btn-pause').addEventListener('click', togglePause);
+    document.getElementById('btn-resume-game').addEventListener('click', togglePause);
+    document.getElementById('btn-restart-game').addEventListener('click', startStageGame);
+    document.getElementById('btn-exit-to-flow').addEventListener('click', returnToFlowLine);
+    document.getElementById('btn-return-flow').addEventListener('click', returnToFlowLine);
+
+    document.getElementById('btn-next-stage').addEventListener('click', () => {
+      if (currentStageIndex < STAGES.length - 1) {
+        currentStageIndex++;
+        startStageGame();
+      }
+    });
+
+    // Volume Slider & Sound Toggle
     const sfxSlider = document.getElementById('slider-sfx-volume');
     sfxSlider.addEventListener('input', (e) => {
       sound.volume = e.target.value / 100;
       document.getElementById('label-volume-val').textContent = `${e.target.value}%`;
     });
 
-    // Sound toggle
     const soundToggle = document.getElementById('btn-sound-toggle');
     const soundIcon = document.getElementById('sound-icon');
     soundToggle.addEventListener('click', () => {
@@ -2105,28 +2130,8 @@
       if (!sound.muted) sound.init();
     });
 
-    // Modal Actions
-    document.getElementById('btn-start-game').addEventListener('click', startGame);
-    document.getElementById('btn-pause').addEventListener('click', togglePause);
-    document.getElementById('btn-resume-game').addEventListener('click', togglePause);
-    document.getElementById('btn-restart-game').addEventListener('click', startGame);
-    document.getElementById('btn-exit-to-lobby').addEventListener('click', returnToLobby);
-    document.getElementById('btn-play-again').addEventListener('click', startGame);
-    document.getElementById('btn-finish-exit').addEventListener('click', returnToLobby);
-
-    // Help Modal
-    document.getElementById('btn-how-to-play').addEventListener('click', () => {
-      document.getElementById('modal-help').classList.remove('hidden');
-    });
-    document.getElementById('btn-close-help').addEventListener('click', () => {
-      document.getElementById('modal-help').classList.add('hidden');
-    });
-    document.getElementById('btn-help-ok').addEventListener('click', () => {
-      document.getElementById('modal-help').classList.add('hidden');
-    });
-
     /* ==========================================================================
-       18. DEVELOPER TESTING PANEL (CHEAT BAR)
+       19. DEV PANEL
        ========================================================================== */
     const cheatToggleBtn = document.getElementById('btn-toggle-cheats');
     const cheatBarContent = document.getElementById('cheat-bar-content');
@@ -2143,23 +2148,19 @@
       }
     });
 
-    // God Mode
-    const cheatGodBtn = document.getElementById('cheat-god-mode');
-    const cheatGodStatus = document.getElementById('cheat-god-status');
-    cheatGodBtn.addEventListener('click', () => {
+    document.getElementById('cheat-god-mode').addEventListener('click', () => {
       gameState.godMode = !gameState.godMode;
-      cheatGodStatus.textContent = gameState.godMode ? 'ON' : 'OFF';
-      cheatGodStatus.className = gameState.godMode ? 'text-emerald-400' : 'text-rose-400';
+      const status = document.getElementById('cheat-god-status');
+      status.textContent = gameState.godMode ? 'ON' : 'OFF';
+      status.className = gameState.godMode ? 'text-emerald-400' : 'text-rose-400';
     });
 
-    // Max Boost
     document.getElementById('cheat-max-boost').addEventListener('click', () => {
       player.boost = 100;
       create3DFloatingText('BOOST 100%!', cameraRig.position, '#fbbf24', true);
       sound.play('pickup');
     });
 
-    // Refill HP & Shield
     document.getElementById('cheat-refill-hp').addEventListener('click', () => {
       player.hp = player.maxHp;
       player.shield = player.maxShield;
@@ -2167,25 +2168,20 @@
       sound.play('pickup');
     });
 
-    // Spawn Monster
-    document.getElementById('cheat-spawn-monster').addEventListener('click', () => {
-      spawnMonster3D();
-      create3DFloatingText('+1 MONSTER 3D', cameraRig.position, '#ef4444', false);
-    });
-
-    // Spawn Boss
     document.getElementById('cheat-spawn-boss').addEventListener('click', () => {
       monsters.forEach(m => m.destroy());
       monsters = [];
-      gameState.monstersToSpawn = 0;
-      transitionToWave2();
+      spawnStageBoss();
     });
 
-    // Kill All
     document.getElementById('cheat-kill-all').addEventListener('click', () => {
       monsters.forEach(m => m.takeDamage(9999, true, 'player'));
       if (boss && boss.alive) boss.takeDamage(9999, true, 'player');
     });
+
+    // Initialize Flow Line UI on startup
+    renderFlowLineUI();
+    updateSelectedStageCard();
   </script>
 </body>
 </html>
