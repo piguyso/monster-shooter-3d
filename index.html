@@ -209,6 +209,10 @@
       <!-- Right: Real-time Leaderboard & Settings -->
       <div class="pointer-events-auto flex flex-col items-end gap-2">
         <div class="flex items-center gap-2">
+          <button id="btn-toggle-camera" class="glass-card hover:bg-slate-700/80 text-white px-2.5 h-9 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow" title="สลับมุมมอง 1st / 3rd Person (กด V)">
+            <i class="fa-solid fa-camera text-sky-400"></i>
+            <span id="camera-mode-label" class="hidden sm:inline">1st Person</span>
+          </button>
           <button id="btn-sound-toggle" class="glass-card hover:bg-slate-700/80 text-white w-9 h-9 rounded-xl flex items-center justify-center transition shadow">
             <i id="sound-icon" class="fa-solid fa-volume-high text-sky-400 text-sm"></i>
           </button>
@@ -271,8 +275,8 @@
         </div>
 
         <button id="btn-open-costume-modal" class="glass-card hover:bg-slate-800 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border border-slate-700 transition">
-          <i class="fa-solid fa-palette text-amber-400"></i>
-          <span>เปลี่ยนสีปืน 3D</span>
+          <i class="fa-solid fa-user-astronaut text-amber-400"></i>
+          <span>ปรับแต่งตัวละคร & ปืน 3D</span>
         </button>
       </div>
 
@@ -319,7 +323,7 @@
     <div class="glass-card max-w-md w-full p-6 rounded-3xl flex flex-col items-center text-center border border-slate-700 shadow-2xl">
       <div class="flex justify-between items-center w-full pb-3 border-b border-slate-700 mb-4">
         <h2 class="text-lg font-bold text-white flex items-center gap-2">
-          <i class="fa-solid fa-palette text-amber-400"></i> ปรับแต่งสีปืนไซเบอร์ 3D
+          <i class="fa-solid fa-user-astronaut text-sky-400"></i> ปรับแต่งตัวละคร & ปืน 3D
         </h2>
         <button id="btn-close-costume" class="text-slate-400 hover:text-white p-1 text-lg">
           <i class="fa-solid fa-xmark"></i>
@@ -327,9 +331,9 @@
       </div>
 
       <!-- 3D Preview Canvas -->
-      <div class="relative w-36 h-36 rounded-2xl bg-gradient-to-b from-slate-800 to-slate-950 border-2 border-sky-500/50 shadow-inner flex items-center justify-center overflow-hidden mb-4">
-        <canvas id="previewCanvas" width="144" height="144" class="block"></canvas>
-        <div class="absolute bottom-1 text-[10px] text-sky-400 tracking-wider font-mono">3D WEAPON PREVIEW</div>
+      <div class="relative w-44 h-48 rounded-2xl bg-gradient-to-b from-slate-850 to-slate-950 border-2 border-sky-500/50 shadow-inner flex items-center justify-center overflow-hidden mb-4">
+        <canvas id="previewCanvas" width="176" height="192" class="block"></canvas>
+        <div class="absolute bottom-1 text-[10px] text-sky-400 tracking-wider font-mono">3D HERO & WEAPON PREVIEW</div>
       </div>
 
       <div id="costume-buttons-container" class="flex flex-wrap gap-3 justify-center mb-3"></div>
@@ -710,67 +714,320 @@
     function createCyberGunMesh(colorHex) {
       const gunGroup = new THREE.Group();
 
-      const bodyGeo = new THREE.BoxGeometry(0.18, 0.22, 0.8);
-      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.2 });
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      gunGroup.add(body);
-
-      const armorGeo = new THREE.BoxGeometry(0.2, 0.12, 0.45);
-      const armorMat = new THREE.MeshStandardMaterial({
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.85, roughness: 0.25 });
+      const accentMat = new THREE.MeshStandardMaterial({
         color: colorHex,
-        metalness: 0.5,
-        roughness: 0.3,
+        metalness: 0.6,
+        roughness: 0.2,
         emissive: colorHex,
-        emissiveIntensity: 0.35
+        emissiveIntensity: 0.45
       });
-      const armor = new THREE.Mesh(armorGeo, armorMat);
-      armor.position.set(0, 0.08, -0.05);
-      gunGroup.add(armor);
+      const glowMat = new THREE.MeshBasicMaterial({ color: colorHex });
+      const darkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9, roughness: 0.2 });
 
-      const barrelGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.45, 16);
-      const barrelMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.1 });
-      
-      const leftBarrel = new THREE.Mesh(barrelGeo, barrelMat);
-      leftBarrel.rotation.x = Math.PI / 2;
-      leftBarrel.position.set(0.06, 0.02, -0.55);
-      gunGroup.add(leftBarrel);
+      // Core receiver chassis
+      const receiverGeo = new THREE.CylinderGeometry(0.08, 0.09, 0.65, 8);
+      const receiver = new THREE.Mesh(receiverGeo, bodyMat);
+      receiver.rotation.x = Math.PI / 2;
+      receiver.scale.set(1.0, 1.0, 0.8);
+      gunGroup.add(receiver);
 
-      const rightBarrel = new THREE.Mesh(barrelGeo, barrelMat);
-      rightBarrel.rotation.x = Math.PI / 2;
-      rightBarrel.position.set(-0.06, 0.02, -0.55);
-      gunGroup.add(rightBarrel);
+      // Ergonomic grip handle
+      const gripGeo = new THREE.CylinderGeometry(0.038, 0.045, 0.32, 10);
+      const grip = new THREE.Mesh(gripGeo, darkMat);
+      grip.rotation.x = -0.35;
+      grip.position.set(0, -0.2, 0.12);
+      gunGroup.add(grip);
 
-      const muzzleLight = new THREE.PointLight(0x38bdf8, 0, 8);
-      muzzleLight.position.set(0, 0.02, -0.8);
+      // Upper armored cowl / top rail
+      const railGeo = new THREE.CylinderGeometry(0.05, 0.055, 0.5, 6);
+      const rail = new THREE.Mesh(railGeo, accentMat);
+      rail.rotation.x = Math.PI / 2;
+      rail.position.set(0, 0.08, -0.05);
+      gunGroup.add(rail);
+
+      // Plasma Power Cell / Glowing Battery Canister
+      const cellGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.25, 12);
+      const cellMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        emissive: colorHex,
+        emissiveIntensity: 0.85,
+        transparent: true,
+        opacity: 0.85
+      });
+      const cell = new THREE.Mesh(cellGeo, cellMat);
+      cell.rotation.z = Math.PI / 2;
+      cell.position.set(0, -0.04, 0.02);
+      gunGroup.add(cell);
+
+      // Energy Coils / Accelerator Rings along barrel
+      for (let i = 0; i < 3; i++) {
+        const ringGeo = new THREE.TorusGeometry(0.065, 0.015, 8, 16);
+        const ring = new THREE.Mesh(ringGeo, glowMat);
+        ring.position.set(0, 0.01, -0.2 - i * 0.14);
+        gunGroup.add(ring);
+      }
+
+      // Main heavy plasma barrel
+      const barrelGeo = new THREE.CylinderGeometry(0.04, 0.042, 0.55, 16);
+      const barrelMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.15 });
+      const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+      barrel.rotation.x = Math.PI / 2;
+      barrel.position.set(0, 0.01, -0.48);
+      gunGroup.add(barrel);
+
+      // Muzzle Brake / Suppressor ring
+      const muzzleGeo = new THREE.CylinderGeometry(0.052, 0.048, 0.12, 16);
+      const muzzle = new THREE.Mesh(muzzleGeo, darkMat);
+      muzzle.rotation.x = Math.PI / 2;
+      muzzle.position.set(0, 0.01, -0.76);
+      gunGroup.add(muzzle);
+
+      // Holographic Sight Mount & Reticle
+      const sightPost = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.08, 6), darkMat);
+      sightPost.position.set(0, 0.14, -0.15);
+      gunGroup.add(sightPost);
+
+      const holoRing = new THREE.Mesh(
+        new THREE.RingGeometry(0.02, 0.032, 16),
+        new THREE.MeshBasicMaterial({ color: colorHex, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+      );
+      holoRing.position.set(0, 0.18, -0.15);
+      gunGroup.add(holoRing);
+
+      // Dynamic Muzzle Flash Light
+      const muzzleLight = new THREE.PointLight(colorHex, 0, 8);
+      muzzleLight.position.set(0, 0.01, -0.85);
       gunGroup.add(muzzleLight);
       gunGroup.userData.muzzleLight = muzzleLight;
 
       return gunGroup;
     }
 
-    // 3D Preview in Costume Modal
+    function createCyberCharacterMesh(colorHex, isBot = false) {
+      const charGroup = new THREE.Group();
+
+      const armorDarkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4, metalness: 0.8 });
+      const innerSuitMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7, metalness: 0.3 });
+      const accentMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        roughness: 0.25,
+        metalness: 0.6,
+        emissive: colorHex,
+        emissiveIntensity: 0.45
+      });
+      const glowMat = new THREE.MeshBasicMaterial({ color: colorHex });
+      const visorMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        emissive: colorHex,
+        emissiveIntensity: 0.9,
+        roughness: 0.1,
+        metalness: 0.9,
+        transparent: true,
+        opacity: 0.9
+      });
+
+      // Pelvis / Armored Belt Group
+      const pelvisGroup = new THREE.Group();
+      pelvisGroup.position.set(0, 0.95, 0);
+      charGroup.add(pelvisGroup);
+
+      const pelvisGeo = new THREE.CylinderGeometry(0.24, 0.2, 0.2, 12);
+      const pelvis = new THREE.Mesh(pelvisGeo, armorDarkMat);
+      pelvisGroup.add(pelvis);
+
+      const beltRing = new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.03, 8, 16), accentMat);
+      beltRing.rotation.x = Math.PI / 2;
+      pelvisGroup.add(beltRing);
+
+      // Torso Group
+      const torsoGroup = new THREE.Group();
+      pelvisGroup.add(torsoGroup);
+
+      // Abdomen
+      const absGeo = new THREE.CylinderGeometry(0.22, 0.21, 0.28, 12);
+      const abs = new THREE.Mesh(absGeo, innerSuitMat);
+      abs.position.y = 0.2;
+      torsoGroup.add(abs);
+
+      // Chestplate
+      const chestGeo = new THREE.CylinderGeometry(0.32, 0.23, 0.46, 12);
+      const chest = new THREE.Mesh(chestGeo, armorDarkMat);
+      chest.position.y = 0.48;
+      chest.scale.set(1.1, 1.0, 0.85);
+      torsoGroup.add(chest);
+
+      // Chest Accent Armor Plate
+      const chestPlate = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.25, 0.35, 8), accentMat);
+      chestPlate.position.set(0, 0.52, 0.03);
+      chestPlate.scale.set(1.05, 1.0, 0.86);
+      torsoGroup.add(chestPlate);
+
+      // Arc Reactor / Chest Energy Core
+      const coreGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.04, 16);
+      const core = new THREE.Mesh(coreGeo, glowMat);
+      core.rotation.x = Math.PI / 2;
+      core.position.set(0, 0.53, 0.25);
+      torsoGroup.add(core);
+
+      const coreRing = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.02, 8, 20), accentMat);
+      coreRing.position.set(0, 0.53, 0.25);
+      torsoGroup.add(coreRing);
+
+      // Twin Jetpack Thrusters on back
+      const jetpackGroup = new THREE.Group();
+      jetpackGroup.position.set(0, 0.48, -0.24);
+      torsoGroup.add(jetpackGroup);
+
+      [-0.14, 0.14].forEach(xOff => {
+        const jetCanister = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.42, 10), armorDarkMat);
+        jetCanister.position.x = xOff;
+        jetpackGroup.add(jetCanister);
+
+        const jetNozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.04, 0.1, 10), accentMat);
+        jetNozzle.position.set(xOff, -0.22, 0);
+        jetpackGroup.add(jetNozzle);
+
+        const jetGlow = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), glowMat);
+        jetGlow.position.set(xOff, -0.27, 0);
+        jetpackGroup.add(jetGlow);
+      });
+
+      // Head / Helmet Group
+      const headGroup = new THREE.Group();
+      headGroup.position.set(0, 0.82, 0);
+      torsoGroup.add(headGroup);
+
+      const helmetGeo = new THREE.SphereGeometry(0.24, 16, 16);
+      const helmet = new THREE.Mesh(helmetGeo, armorDarkMat);
+      helmet.scale.set(0.95, 1.08, 1.0);
+      headGroup.add(helmet);
+
+      // Curved Visor
+      const visorGeo = new THREE.SphereGeometry(0.235, 16, 16, 0, Math.PI, 0, Math.PI * 0.55);
+      const visor = new THREE.Mesh(visorGeo, visorMat);
+      visor.rotation.x = -Math.PI / 4;
+      visor.position.set(0, 0.02, 0.04);
+      headGroup.add(visor);
+
+      // Helmet Crest
+      const crestGeo = new THREE.ConeGeometry(0.05, 0.25, 6);
+      const crest = new THREE.Mesh(crestGeo, accentMat);
+      crest.rotation.x = -0.5;
+      crest.position.set(0, 0.24, -0.06);
+      headGroup.add(crest);
+
+      // Left & Right Arms
+      const leftArmGroup = new THREE.Group();
+      leftArmGroup.position.set(0.42, 0.65, 0);
+      torsoGroup.add(leftArmGroup);
+
+      const rightArmGroup = new THREE.Group();
+      rightArmGroup.position.set(-0.42, 0.65, 0);
+      torsoGroup.add(rightArmGroup);
+
+      [leftArmGroup, rightArmGroup].forEach(arm => {
+        const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), accentMat);
+        pauldron.scale.set(1.0, 1.2, 1.0);
+        arm.add(pauldron);
+
+        const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.065, 0.28, 8), innerSuitMat);
+        upperArm.position.y = -0.16;
+        arm.add(upperArm);
+
+        const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), armorDarkMat);
+        elbow.position.y = -0.3;
+        arm.add(elbow);
+
+        const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.26, 8), armorDarkMat);
+        forearm.position.y = -0.44;
+        arm.add(forearm);
+      });
+
+      // Weapon held in right arm
+      const charWeapon = createCyberGunMesh(colorHex);
+      charWeapon.scale.set(0.65, 0.65, 0.65);
+      charWeapon.rotation.set(-0.25, 0, 0);
+      charWeapon.position.set(0, -0.55, 0.28);
+      rightArmGroup.add(charWeapon);
+
+      // Left & Right Legs
+      const leftLegGroup = new THREE.Group();
+      leftLegGroup.position.set(0.18, 0, 0);
+      pelvisGroup.add(leftLegGroup);
+
+      const rightLegGroup = new THREE.Group();
+      rightLegGroup.position.set(-0.18, 0, 0);
+      pelvisGroup.add(rightLegGroup);
+
+      [leftLegGroup, rightLegGroup].forEach(leg => {
+        const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.075, 0.38, 10), innerSuitMat);
+        thigh.position.y = -0.22;
+        leg.add(thigh);
+
+        const knee = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 8), accentMat);
+        knee.position.set(0, -0.42, 0.04);
+        knee.scale.set(1, 1.1, 0.8);
+        leg.add(knee);
+
+        const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.38, 10), armorDarkMat);
+        shin.position.y = -0.62;
+        leg.add(shin);
+
+        const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.14, 8), armorDarkMat);
+        boot.position.set(0, -0.84, 0.04);
+        boot.scale.set(1, 1, 1.4);
+        leg.add(boot);
+
+        const bootSole = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.095, 0.05, 8), accentMat);
+        bootSole.position.set(0, -0.91, 0.04);
+        bootSole.scale.set(1, 1, 1.4);
+        leg.add(bootSole);
+      });
+
+      charGroup.userData = {
+        torsoGroup,
+        headGroup,
+        leftArmGroup,
+        rightArmGroup,
+        leftLegGroup,
+        rightLegGroup,
+        core,
+        charWeapon,
+        walkCycle: 0
+      };
+
+      return charGroup;
+    }
+
+    // 3D Preview in Costume Modal (Shows full Hero Character + Weapon)
     const previewCanvas = document.getElementById('previewCanvas');
     const previewRenderer = new THREE.WebGLRenderer({ canvas: previewCanvas, alpha: true, antialias: true });
-    previewRenderer.setSize(144, 144);
+    previewRenderer.setSize(176, 192);
     previewRenderer.setPixelRatio(window.devicePixelRatio);
 
     const previewScene = new THREE.Scene();
-    const previewCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-    previewCamera.position.set(1.1, 0.8, 1.4);
-    previewCamera.lookAt(0, 0, 0);
+    const previewCamera = new THREE.PerspectiveCamera(45, 176 / 192, 0.1, 100);
+    previewCamera.position.set(0, 1.25, 2.7);
+    previewCamera.lookAt(0, 0.95, 0);
 
-    const previewLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    previewLight.position.set(2, 3, 2);
+    const previewLight = new THREE.DirectionalLight(0xffffff, 1.3);
+    previewLight.position.set(2, 3, 2.5);
     previewScene.add(previewLight);
-    previewScene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    previewScene.add(new THREE.AmbientLight(0xffffff, 0.85));
 
-    let previewGun = createCyberGunMesh(selectedCostume.hex);
-    previewScene.add(previewGun);
+    let previewCharacter = createCyberCharacterMesh(selectedCostume.hex, false);
+    previewScene.add(previewCharacter);
 
     function render3DPreview() {
-      if (previewGun) {
-        previewGun.rotation.y += 0.02;
-        previewGun.rotation.x = Math.sin(Date.now() * 0.003) * 0.1;
+      if (previewCharacter) {
+        previewCharacter.rotation.y += 0.016;
+        if (previewCharacter.userData && previewCharacter.userData.torsoGroup) {
+          const ud = previewCharacter.userData;
+          ud.walkCycle = (ud.walkCycle || 0) + 0.03;
+          ud.torsoGroup.position.y = Math.sin(ud.walkCycle) * 0.02;
+          if (ud.core) ud.core.scale.setScalar(1 + Math.sin(ud.walkCycle * 2) * 0.08);
+        }
       }
       previewRenderer.render(previewScene, previewCamera);
       requestAnimationFrame(render3DPreview);
@@ -802,6 +1059,35 @@
     let playerGun = createCyberGunMesh(selectedCostume.hex);
     playerGun.position.set(0.32, -0.26, -0.6);
     camera.add(playerGun);
+
+    // Player 3D Character Model (For 3rd person perspective)
+    let isThirdPerson = false;
+    let player3DCharacter = createCyberCharacterMesh(selectedCostume.hex, false);
+    player3DCharacter.rotation.y = Math.PI; // Face forward along rig (-Z)
+    player3DCharacter.visible = false;
+    cameraRig.add(player3DCharacter);
+
+    function toggleCameraView() {
+      isThirdPerson = !isThirdPerson;
+      const label = document.getElementById('camera-mode-label');
+      if (isThirdPerson) {
+        camera.position.set(0.65, 1.95, 2.7);
+        camera.rotation.y = -0.15;
+        playerGun.visible = false;
+        player3DCharacter.visible = true;
+        if (label) label.textContent = '3rd Person';
+      } else {
+        camera.position.set(0, 1.7, 0);
+        camera.rotation.y = 0;
+        playerGun.visible = true;
+        player3DCharacter.visible = false;
+        if (label) label.textContent = '1st Person';
+      }
+      sound.play('pickup');
+    }
+
+    const btnToggleCam = document.getElementById('btn-toggle-camera');
+    if (btnToggleCam) btnToggleCam.addEventListener('click', toggleCameraView);
 
     scene.add(new THREE.AmbientLight(0x475569, 1.0));
     const sunLight = new THREE.DirectionalLight(0xbae6fd, 1.4);
@@ -949,9 +1235,29 @@
             this.weaponBobTimer += dt * 14;
             playerGun.position.y = -0.26 + Math.sin(this.weaponBobTimer) * 0.015;
             playerGun.position.x = 0.32 + Math.cos(this.weaponBobTimer * 0.5) * 0.01;
+
+            if (player3DCharacter && player3DCharacter.userData) {
+              const ud = player3DCharacter.userData;
+              ud.walkCycle += dt * 12;
+              ud.leftLegGroup.rotation.x = Math.sin(ud.walkCycle) * 0.65;
+              ud.rightLegGroup.rotation.x = -Math.sin(ud.walkCycle) * 0.65;
+              ud.leftArmGroup.rotation.x = -Math.sin(ud.walkCycle) * 0.5;
+              ud.rightArmGroup.rotation.x = Math.sin(ud.walkCycle) * 0.5;
+              ud.torsoGroup.position.y = Math.abs(Math.sin(ud.walkCycle * 2)) * 0.05;
+            }
           } else {
             playerGun.position.y = THREE.MathUtils.lerp(playerGun.position.y, -0.26, dt * 8);
             playerGun.position.x = THREE.MathUtils.lerp(playerGun.position.x, 0.32, dt * 8);
+
+            if (player3DCharacter && player3DCharacter.userData) {
+              const ud = player3DCharacter.userData;
+              ud.walkCycle += dt * 2.5;
+              ud.leftLegGroup.rotation.x = THREE.MathUtils.lerp(ud.leftLegGroup.rotation.x, 0, dt * 10);
+              ud.rightLegGroup.rotation.x = THREE.MathUtils.lerp(ud.rightLegGroup.rotation.x, 0, dt * 10);
+              ud.leftArmGroup.rotation.x = THREE.MathUtils.lerp(ud.leftArmGroup.rotation.x, 0, dt * 10);
+              ud.rightArmGroup.rotation.x = THREE.MathUtils.lerp(ud.rightArmGroup.rotation.x, 0, dt * 10);
+              ud.torsoGroup.position.y = Math.sin(ud.walkCycle) * 0.02;
+            }
           }
 
           if (input.dashPressed && this.dashCooldown <= 0) {
@@ -1004,6 +1310,14 @@
           playerGun.userData.muzzleLight.intensity = 4;
           setTimeout(() => {
             if (playerGun.userData.muzzleLight) playerGun.userData.muzzleLight.intensity = 0;
+          }, 50);
+        }
+        if (player3DCharacter && player3DCharacter.userData && player3DCharacter.userData.charWeapon && player3DCharacter.userData.charWeapon.userData.muzzleLight) {
+          player3DCharacter.userData.charWeapon.userData.muzzleLight.intensity = 4;
+          setTimeout(() => {
+            if (player3DCharacter && player3DCharacter.userData && player3DCharacter.userData.charWeapon && player3DCharacter.userData.charWeapon.userData.muzzleLight) {
+              player3DCharacter.userData.charWeapon.userData.muzzleLight.intensity = 0;
+            }
           }, 50);
         }
 
@@ -1147,27 +1461,8 @@
         this.speed = 9.5;
 
         this.mesh = new THREE.Group();
-        const bodyGeo = new THREE.BoxGeometry(0.8, 1.1, 0.5);
-        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8 });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        body.position.y = 1.2;
-        this.mesh.add(body);
-
-        const chestGeo = new THREE.BoxGeometry(0.84, 0.5, 0.25);
-        const chestMat = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.3 });
-        const chest = new THREE.Mesh(chestGeo, chestMat);
-        chest.position.set(0, 1.35, 0.2);
-        this.mesh.add(chest);
-
-        const headGeo = new THREE.BoxGeometry(0.5, 0.45, 0.45);
-        const head = new THREE.Mesh(headGeo, new THREE.MeshStandardMaterial({ color: 0x0f172a }));
-        head.position.y = 2.0;
-        this.mesh.add(head);
-
-        const visorGeo = new THREE.BoxGeometry(0.4, 0.15, 0.1);
-        const visor = new THREE.Mesh(visorGeo, new THREE.MeshBasicMaterial({ color: colorHex }));
-        visor.position.set(0, 2.0, 0.24);
-        this.mesh.add(visor);
+        this.characterModel = createCyberCharacterMesh(colorHex, true);
+        this.mesh.add(this.characterModel);
 
         this.initHealthBar();
 
@@ -1378,11 +1673,40 @@
             this.mesh.position.addScaledVector(dir, -this.speed * dt);
           }
 
+          // Animate bot limbs during movement vs idle
+          if (this.characterModel && this.characterModel.userData) {
+            const ud = this.characterModel.userData;
+            if (dist > 16 || dist < 10) {
+              ud.walkCycle += dt * 11;
+              ud.leftLegGroup.rotation.x = Math.sin(ud.walkCycle) * 0.6;
+              ud.rightLegGroup.rotation.x = -Math.sin(ud.walkCycle) * 0.6;
+              ud.leftArmGroup.rotation.x = -Math.sin(ud.walkCycle) * 0.45;
+              ud.rightArmGroup.rotation.x = Math.sin(ud.walkCycle) * 0.45;
+              ud.torsoGroup.position.y = Math.abs(Math.sin(ud.walkCycle * 2)) * 0.04;
+            } else {
+              ud.walkCycle += dt * 2.5;
+              ud.leftLegGroup.rotation.x = THREE.MathUtils.lerp(ud.leftLegGroup.rotation.x, 0, dt * 10);
+              ud.rightLegGroup.rotation.x = THREE.MathUtils.lerp(ud.rightLegGroup.rotation.x, 0, dt * 10);
+              ud.leftArmGroup.rotation.x = THREE.MathUtils.lerp(ud.leftArmGroup.rotation.x, 0, dt * 10);
+              ud.rightArmGroup.rotation.x = THREE.MathUtils.lerp(ud.rightArmGroup.rotation.x, 0, dt * 10);
+              ud.torsoGroup.position.y = Math.sin(ud.walkCycle) * 0.02;
+            }
+          }
+
           if (this.fireCooldown <= 0 && dist < 35) {
             const shootOrigin = this.mesh.position.clone().add(new THREE.Vector3(0, 1.3, 0));
             const shootDir = new THREE.Vector3().subVectors(target.mesh.position, shootOrigin).normalize();
             bullets.push(new Bullet3D(shootOrigin, shootDir, this.id, BASE_BULLET_DAMAGE, false, this.colorHex));
             this.fireCooldown = this.fireRate;
+
+            if (this.characterModel && this.characterModel.userData && this.characterModel.userData.charWeapon && this.characterModel.userData.charWeapon.userData.muzzleLight) {
+              this.characterModel.userData.charWeapon.userData.muzzleLight.intensity = 4;
+              setTimeout(() => {
+                if (this.characterModel && this.characterModel.userData && this.characterModel.userData.charWeapon && this.characterModel.userData.charWeapon.userData.muzzleLight) {
+                  this.characterModel.userData.charWeapon.userData.muzzleLight.intensity = 0;
+                }
+              }, 50);
+            }
           }
         }
 
@@ -1557,8 +1881,328 @@
     }
 
     /* ==========================================================================
-       10. MULTIPLE 3D ENEMY TYPES (Creeper, Spitter, Brute)
+       10. MULTIPLE 3D ENEMY TYPES (Creeper, Spitter, Brute) - SCULPTED MODELS
        ========================================================================== */
+    function createCreeperMesh() {
+      const group = new THREE.Group();
+      const bodyMat = new THREE.MeshStandardMaterial({
+        color: 0x991b1b,
+        roughness: 0.35,
+        metalness: 0.6,
+        emissive: 0xef4444,
+        emissiveIntensity: 0.45
+      });
+      const chitinDarkMat = new THREE.MeshStandardMaterial({ color: 0x450a0a, roughness: 0.6, metalness: 0.4 });
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+      const venomMat = new THREE.MeshBasicMaterial({ color: 0xf97316 });
+
+      // Main Torso / Thorax
+      const thoraxGeo = new THREE.SphereGeometry(0.55, 14, 14);
+      const thorax = new THREE.Mesh(thoraxGeo, bodyMat);
+      thorax.scale.set(0.85, 0.7, 1.1);
+      thorax.position.set(0, 0.75, 0);
+      group.add(thorax);
+
+      // Posterior Abdomen
+      const abdomenGeo = new THREE.SphereGeometry(0.65, 14, 14);
+      const abdomen = new THREE.Mesh(abdomenGeo, chitinDarkMat);
+      abdomen.scale.set(0.9, 0.8, 1.3);
+      abdomen.position.set(0, 0.85, -0.85);
+      group.add(abdomen);
+
+      // Spine Dorsal Spikes along abdomen
+      for (let i = 0; i < 4; i++) {
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.35, 6), bodyMat);
+        spike.rotation.x = -0.4;
+        spike.position.set(0, 1.35 - i * 0.08, -0.5 - i * 0.28);
+        group.add(spike);
+      }
+
+      // Head / Predator Maw
+      const headGeo = new THREE.SphereGeometry(0.4, 12, 12);
+      const head = new THREE.Mesh(headGeo, chitinDarkMat);
+      head.scale.set(0.9, 0.75, 1.0);
+      head.position.set(0, 0.72, 0.62);
+      group.add(head);
+
+      // 4 Glowing Predator Eyes
+      [-0.18, -0.07, 0.07, 0.18].forEach((x, i) => {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), eyeMat);
+        eye.position.set(x, 0.82 + (i === 1 || i === 2 ? 0.06 : 0), 0.88);
+        group.add(eye);
+      });
+
+      // Twin Curved Razor Mandibles / Pincers
+      const mandibleL = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.45, 8), venomMat);
+      mandibleL.rotation.set(Math.PI / 3, -0.4, 0.3);
+      mandibleL.position.set(0.24, 0.58, 0.95);
+      group.add(mandibleL);
+
+      const mandibleR = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.45, 8), venomMat);
+      mandibleR.rotation.set(Math.PI / 3, 0.4, -0.3);
+      mandibleR.position.set(-0.24, 0.58, 0.95);
+      group.add(mandibleR);
+
+      // Arched Stinger Tail
+      const tailGroup = new THREE.Group();
+      tailGroup.position.set(0, 0.95, -1.4);
+      group.add(tailGroup);
+
+      const tailBase = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.08, 0.6, 8), chitinDarkMat);
+      tailBase.rotation.x = 0.8;
+      tailBase.position.set(0, 0.3, -0.15);
+      tailGroup.add(tailBase);
+
+      const stinger = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.35, 8), venomMat);
+      stinger.rotation.x = 2.4;
+      stinger.position.set(0, 0.6, -0.32);
+      tailGroup.add(stinger);
+
+      // 6 Jointed Scuttling Legs (3 on left, 3 on right)
+      const legs = [];
+      [-0.4, 0, 0.38].forEach((zOff, idx) => {
+        const legGroupL = new THREE.Group();
+        legGroupL.position.set(0.42, 0.65, zOff);
+        group.add(legGroupL);
+
+        const femurL = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.045, 0.65, 8), chitinDarkMat);
+        femurL.rotation.z = -Math.PI / 3;
+        femurL.position.set(0.25, 0.15, 0);
+        legGroupL.add(femurL);
+
+        const tibiaL = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.8, 8), bodyMat);
+        tibiaL.rotation.z = Math.PI / 6;
+        tibiaL.position.set(0.55, -0.35, 0);
+        legGroupL.add(tibiaL);
+
+        const legGroupR = new THREE.Group();
+        legGroupR.position.set(-0.42, 0.65, zOff);
+        group.add(legGroupR);
+
+        const femurR = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.045, 0.65, 8), chitinDarkMat);
+        femurR.rotation.z = Math.PI / 3;
+        femurR.position.set(-0.25, 0.15, 0);
+        legGroupR.add(femurR);
+
+        const tibiaR = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.8, 8), bodyMat);
+        tibiaR.rotation.z = -Math.PI / 6;
+        tibiaR.position.set(-0.55, -0.35, 0);
+        legGroupR.add(tibiaR);
+
+        legs.push({ groupL: legGroupL, groupR: legGroupR, phase: idx * 1.05 });
+      });
+
+      group.userData = { legs, tailGroup, mandibleL, mandibleR, walkCycle: 0 };
+      return group;
+    }
+
+    function createSpitterMesh() {
+      const group = new THREE.Group();
+
+      const mantleMat = new THREE.MeshStandardMaterial({
+        color: 0x047857,
+        roughness: 0.3,
+        metalness: 0.2,
+        emissive: 0x059669,
+        emissiveIntensity: 0.5,
+        transparent: true,
+        opacity: 0.9
+      });
+      const coreMat = new THREE.MeshBasicMaterial({ color: 0x34d399 });
+      const tentacleMat = new THREE.MeshStandardMaterial({
+        color: 0x065f46,
+        roughness: 0.5,
+        metalness: 0.2,
+        emissive: 0x10b981,
+        emissiveIntensity: 0.3
+      });
+      const darkBioMat = new THREE.MeshStandardMaterial({ color: 0x022c22, roughness: 0.6 });
+
+      // Bioluminescent Dome / Mantle Bell
+      const domeGeo = new THREE.SphereGeometry(0.85, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.6);
+      const dome = new THREE.Mesh(domeGeo, mantleMat);
+      dome.rotation.x = Math.PI;
+      dome.position.y = 1.35;
+      group.add(dome);
+
+      // Glowing Inner Core (toxic plasma nucleus)
+      const coreGeo = new THREE.SphereGeometry(0.48, 14, 14);
+      const core = new THREE.Mesh(coreGeo, coreMat);
+      core.position.y = 1.25;
+      group.add(core);
+
+      // Acid Plasma Cannon Maw / Mouth ring
+      const mouthGeo = new THREE.TorusGeometry(0.24, 0.08, 8, 16);
+      const mouth = new THREE.Mesh(mouthGeo, coreMat);
+      mouth.rotation.x = Math.PI / 2;
+      mouth.position.set(0, 0.92, 0.35);
+      group.add(mouth);
+
+      // 4 Floating Chitin Wings / Hover Stabilizers
+      const fins = [];
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2;
+        const fin = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.65, 6), darkBioMat);
+        fin.rotation.z = Math.cos(angle) * 0.8;
+        fin.rotation.x = Math.sin(angle) * 0.8;
+        fin.position.set(Math.cos(angle) * 0.85, 1.25, Math.sin(angle) * 0.85);
+        group.add(fin);
+        fins.push(fin);
+      }
+
+      // 6 Undulating Venom Tendrils / Tentacles
+      const tentacles = [];
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        const radius = 0.45;
+        const tentGroup = new THREE.Group();
+        tentGroup.position.set(Math.cos(angle) * radius, 0.85, Math.sin(angle) * radius);
+        group.add(tentGroup);
+
+        const seg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.45, 6), tentacleMat);
+        seg1.position.y = -0.22;
+        tentGroup.add(seg1);
+
+        const seg2 = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.55, 6), coreMat);
+        seg2.position.y = -0.68;
+        seg2.rotation.x = Math.PI;
+        tentGroup.add(seg2);
+
+        tentacles.push({ group: tentGroup, angle, phase: i * 1.0 });
+      }
+
+      // Orbiting Toxic Spores
+      const spores = [];
+      for (let i = 0; i < 3; i++) {
+        const spore = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), coreMat);
+        group.add(spore);
+        spores.push(spore);
+      }
+
+      group.userData = { core, mouth, fins, tentacles, spores, hoverTime: 0 };
+      return group;
+    }
+
+    function createBruteMesh() {
+      const group = new THREE.Group();
+
+      const obsidianMat = new THREE.MeshStandardMaterial({
+        color: 0x2e1065,
+        roughness: 0.5,
+        metalness: 0.6,
+        emissive: 0x581c87,
+        emissiveIntensity: 0.35
+      });
+      const rockDarkMat = new THREE.MeshStandardMaterial({ color: 0x0f0728, roughness: 0.8, metalness: 0.3 });
+      const coreMat = new THREE.MeshBasicMaterial({ color: 0xc084fc });
+      const fissureMat = new THREE.MeshStandardMaterial({
+        color: 0x9333ea,
+        emissive: 0xa855f7,
+        emissiveIntensity: 0.85,
+        roughness: 0.2
+      });
+
+      // Massive Muscular Torso
+      const torsoGeo = new THREE.CylinderGeometry(1.1, 0.8, 1.6, 12);
+      const torso = new THREE.Mesh(torsoGeo, rockDarkMat);
+      torso.position.y = 1.6;
+      torso.scale.set(1.15, 1.0, 0.9);
+      group.add(torso);
+
+      // Void Ribcage & Chest Armor
+      const chestArmor = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 0.85, 0.8, 8), obsidianMat);
+      chestArmor.position.set(0, 1.9, 0.08);
+      chestArmor.scale.set(1.15, 1.0, 0.95);
+      group.add(chestArmor);
+
+      // Swirling Void Core inside chest cavity
+      const voidCoreGeo = new THREE.SphereGeometry(0.42, 14, 14);
+      const voidCore = new THREE.Mesh(voidCoreGeo, coreMat);
+      voidCore.position.set(0, 1.85, 0.38);
+      group.add(voidCore);
+
+      const voidRing = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 8, 16), fissureMat);
+      voidRing.position.set(0, 1.85, 0.38);
+      group.add(voidRing);
+
+      // Horned Void Helm
+      const headGroup = new THREE.Group();
+      headGroup.position.set(0, 2.55, 0.2);
+      group.add(headGroup);
+
+      const helmGeo = new THREE.SphereGeometry(0.48, 12, 12);
+      const helm = new THREE.Mesh(helmGeo, rockDarkMat);
+      helm.scale.set(1.0, 1.15, 1.05);
+      headGroup.add(helm);
+
+      const eyeVisor = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 8), fissureMat);
+      eyeVisor.rotation.x = Math.PI / 2;
+      eyeVisor.position.set(0, 0.05, 0.38);
+      eyeVisor.scale.set(1.0, 0.35, 1.0);
+      headGroup.add(eyeVisor);
+
+      [-0.4, 0.4].forEach(x => {
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.7, 8), obsidianMat);
+        horn.rotation.z = x > 0 ? -0.55 : 0.55;
+        horn.rotation.x = -0.25;
+        horn.position.set(x, 0.42, -0.05);
+        headGroup.add(horn);
+      });
+
+      // Giant Spiked Pauldron Shoulders & Heavy Arms
+      const armLGroup = new THREE.Group();
+      armLGroup.position.set(1.35, 2.1, 0);
+      group.add(armLGroup);
+
+      const armRGroup = new THREE.Group();
+      armRGroup.position.set(-1.35, 2.1, 0);
+      group.add(armRGroup);
+
+      [armLGroup, armRGroup].forEach((arm, idx) => {
+        const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.52, 12, 12), obsidianMat);
+        shoulder.scale.set(1.1, 1.2, 1.0);
+        arm.add(shoulder);
+
+        for (let s = 0; s < 3; s++) {
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.4, 6), fissureMat);
+          spike.rotation.z = (idx === 0 ? 0.6 : -0.6) + (s - 1) * 0.4;
+          spike.position.set((idx === 0 ? 0.32 : -0.32), 0.28 + s * 0.1, 0);
+          arm.add(spike);
+        }
+
+        const bicep = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.24, 0.65, 8), rockDarkMat);
+        bicep.position.y = -0.42;
+        arm.add(bicep);
+
+        const fist = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 10), obsidianMat);
+        fist.scale.set(1.1, 1.3, 1.1);
+        fist.position.y = -0.9;
+        arm.add(fist);
+      });
+
+      // Massive Pillar Legs
+      const legLGroup = new THREE.Group();
+      legLGroup.position.set(0.6, 0.95, 0);
+      group.add(legLGroup);
+
+      const legRGroup = new THREE.Group();
+      legRGroup.position.set(-0.6, 0.95, 0);
+      group.add(legRGroup);
+
+      [legLGroup, legRGroup].forEach(leg => {
+        const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.28, 0.6, 8), rockDarkMat);
+        thigh.position.y = -0.28;
+        leg.add(thigh);
+
+        const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.65, 8), obsidianMat);
+        shin.position.y = -0.75;
+        leg.add(shin);
+      });
+
+      group.userData = { armLGroup, armRGroup, legLGroup, legRGroup, voidCore, voidRing, walkCycle: 0 };
+      return group;
+    }
+
     class Monster3D {
       constructor(x, z, type = 'creeper') {
         this.type = type; // 'creeper', 'spitter', 'brute'
@@ -1571,53 +2215,22 @@
           this.maxHp = 30;
           this.speed = 6.5;
           this.radius = 1.1;
-
-          const bodyGeo = new THREE.DodecahedronGeometry(0.85);
-          const bodyMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, emissive: 0xef4444, emissiveIntensity: 0.3 });
-          const body = new THREE.Mesh(bodyGeo, bodyMat);
-          body.position.y = 0.9;
-          this.mesh.add(body);
-
-          const eyeGeo = new THREE.SphereGeometry(0.14, 8, 8);
-          const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
-          const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-          eyeL.position.set(0.28, 1.1, 0.65);
-          const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-          eyeR.position.set(-0.28, 1.1, 0.65);
-          this.mesh.add(eyeL);
-          this.mesh.add(eyeR);
-
+          this.monsterMesh = createCreeperMesh();
+          this.mesh.add(this.monsterMesh);
         } else if (type === 'spitter') {
           this.hp = 45;
           this.maxHp = 45;
           this.speed = 4.2;
           this.radius = 1.3;
-
-          const bodyGeo = new THREE.OctahedronGeometry(1.0);
-          const bodyMat = new THREE.MeshStandardMaterial({ color: 0x047857, emissive: 0x10b981, emissiveIntensity: 0.4 });
-          const body = new THREE.Mesh(bodyGeo, bodyMat);
-          body.position.y = 1.2;
-          this.mesh.add(body);
-
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), new THREE.MeshBasicMaterial({ color: 0x34d399 }));
-          eye.position.set(0, 1.4, 0.7);
-          this.mesh.add(eye);
-
+          this.monsterMesh = createSpitterMesh();
+          this.mesh.add(this.monsterMesh);
         } else if (type === 'brute') {
           this.hp = 80;
           this.maxHp = 80;
           this.speed = 3.5;
           this.radius = 1.8;
-
-          const bodyGeo = new THREE.BoxGeometry(1.8, 2.0, 1.4);
-          const bodyMat = new THREE.MeshStandardMaterial({ color: 0x581c87, emissive: 0x9333ea, emissiveIntensity: 0.3 });
-          const body = new THREE.Mesh(bodyGeo, bodyMat);
-          body.position.y = 1.3;
-          this.mesh.add(body);
-
-          const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.8), new THREE.MeshStandardMaterial({ color: 0x2e1065 }));
-          head.position.set(0, 2.5, 0.3);
-          this.mesh.add(head);
+          this.monsterMesh = createBruteMesh();
+          this.mesh.add(this.monsterMesh);
         }
 
         this.mesh.position.set(x, 0, z);
@@ -1659,6 +2272,27 @@
             bullets.push(new Bullet3D(shootOrigin, shootDir, 'spitter', 12, false, 0x10b981));
             this.attackCooldown = 1.8;
           }
+
+          // Spitter floating & tendril fluid animation
+          if (this.monsterMesh && this.monsterMesh.userData) {
+            const ud = this.monsterMesh.userData;
+            ud.hoverTime = (ud.hoverTime || 0) + dt;
+            if (ud.tentacles) {
+              ud.tentacles.forEach(t => {
+                t.group.rotation.x = Math.sin(ud.hoverTime * 3 + t.phase) * 0.3;
+                t.group.rotation.z = Math.cos(ud.hoverTime * 2.5 + t.phase) * 0.25;
+              });
+            }
+            if (ud.spores) {
+              ud.spores.forEach((s, idx) => {
+                const ang = ud.hoverTime * 2.2 + (idx * Math.PI * 2) / 3;
+                s.position.set(Math.cos(ang) * 1.1, 1.25 + Math.sin(ang * 2) * 0.2, Math.sin(ang) * 1.1);
+              });
+            }
+            if (ud.core) {
+              ud.core.scale.setScalar(1 + Math.sin(ud.hoverTime * 4) * 0.1);
+            }
+          }
         } else {
           this.mesh.position.addScaledVector(dir, this.speed * dt);
           if (minDist < this.radius + 1.2 && this.attackCooldown <= 0) {
@@ -1668,6 +2302,46 @@
               targetEntity.takeDamage(this.type === 'brute' ? 22 : 12, false, 'monster');
             }
             this.attackCooldown = 0.9;
+          }
+
+          // Creeper scuttling legs animation
+          if (this.type === 'creeper' && this.monsterMesh && this.monsterMesh.userData) {
+            const ud = this.monsterMesh.userData;
+            ud.walkCycle += dt * 14;
+            if (ud.legs) {
+              ud.legs.forEach(l => {
+                l.groupL.rotation.y = Math.sin(ud.walkCycle + l.phase) * 0.45;
+                l.groupR.rotation.y = -Math.sin(ud.walkCycle + l.phase) * 0.45;
+                l.groupL.rotation.x = Math.cos(ud.walkCycle + l.phase) * 0.25;
+                l.groupR.rotation.x = -Math.cos(ud.walkCycle + l.phase) * 0.25;
+              });
+            }
+            if (ud.tailGroup) ud.tailGroup.rotation.y = Math.sin(ud.walkCycle * 0.5) * 0.35;
+            if (ud.mandibleL && ud.mandibleR) {
+              const snap = Math.sin(ud.walkCycle * 0.8) * 0.15;
+              ud.mandibleL.rotation.y = -0.4 + snap;
+              ud.mandibleR.rotation.y = 0.4 - snap;
+            }
+          }
+
+          // Brute heavy lumbering walk animation
+          if (this.type === 'brute' && this.monsterMesh && this.monsterMesh.userData) {
+            const ud = this.monsterMesh.userData;
+            ud.walkCycle += dt * 6;
+            if (ud.armLGroup && ud.armRGroup) {
+              ud.armLGroup.rotation.x = Math.sin(ud.walkCycle) * 0.45;
+              ud.armRGroup.rotation.x = -Math.sin(ud.walkCycle) * 0.45;
+            }
+            if (ud.legLGroup && ud.legRGroup) {
+              ud.legLGroup.rotation.x = -Math.sin(ud.walkCycle) * 0.4;
+              ud.legRGroup.rotation.x = Math.sin(ud.walkCycle) * 0.4;
+            }
+            if (ud.voidCore) {
+              ud.voidCore.scale.setScalar(1 + Math.sin(ud.walkCycle * 1.5) * 0.15);
+            }
+            if (ud.voidRing) {
+              ud.voidRing.rotation.z += dt * 2.0;
+            }
           }
         }
 
@@ -1723,8 +2397,398 @@
     }
 
     /* ==========================================================================
-       11. MULTI-STAGE 3D BOSS ENGINE
+       11. MULTI-STAGE 3D BOSS ENGINE - SCULPTED MODELS
        ========================================================================== */
+    function createCyberGolemBossMesh() {
+      const group = new THREE.Group();
+
+      const hullMat = new THREE.MeshStandardMaterial({
+        color: 0x0369a1,
+        roughness: 0.3,
+        metalness: 0.85,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.25
+      });
+      const darkMechMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4, metalness: 0.9 });
+      const glowCyanMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+      const steelMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.2 });
+
+      // Heavy Tapered Mech Chassis
+      const chassisGeo = new THREE.CylinderGeometry(2.3, 1.7, 3.2, 12);
+      const chassis = new THREE.Mesh(chassisGeo, hullMat);
+      chassis.position.y = 4.0;
+      group.add(chassis);
+
+      // Glowing Hexagon Chest Reactor
+      const reactorGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.35, 16);
+      const reactor = new THREE.Mesh(reactorGeo, glowCyanMat);
+      reactor.rotation.x = Math.PI / 2;
+      reactor.position.set(0, 4.0, 1.4);
+      group.add(reactor);
+
+      const reactorRing = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.1, 8, 24), darkMechMat);
+      reactorRing.position.set(0, 4.0, 1.4);
+      group.add(reactorRing);
+
+      // Command Dome / Optic Visor Head
+      const domeGeo = new THREE.SphereGeometry(1.2, 16, 14, 0, Math.PI * 2, 0, Math.PI * 0.6);
+      const dome = new THREE.Mesh(domeGeo, darkMechMat);
+      dome.position.set(0, 5.5, 0.2);
+      group.add(dome);
+
+      const opticVisor = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.15, 12), glowCyanMat);
+      opticVisor.rotation.x = Math.PI / 2;
+      opticVisor.position.set(0, 5.8, 1.0);
+      group.add(opticVisor);
+
+      // Twin Heavy Rotary Gatling Turrets (Shoulder mounted)
+      const cannonL = new THREE.Group();
+      cannonL.position.set(2.8, 4.2, 0.4);
+      group.add(cannonL);
+
+      const cannonR = new THREE.Group();
+      cannonR.position.set(-2.8, 4.2, 0.4);
+      group.add(cannonR);
+
+      const barrelsL = new THREE.Group();
+      const barrelsR = new THREE.Group();
+      cannonL.add(barrelsL);
+      cannonR.add(barrelsR);
+
+      [cannonL, cannonR].forEach((cann, idx) => {
+        const mount = new THREE.Mesh(new THREE.SphereGeometry(0.9, 14, 14), darkMechMat);
+        cann.add(mount);
+
+        const bGroup = idx === 0 ? barrelsL : barrelsR;
+        for (let b = 0; b < 3; b++) {
+          const ang = (b / 3) * Math.PI * 2;
+          const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.8, 12), steelMat);
+          barrel.rotation.x = Math.PI / 2;
+          barrel.position.set(Math.cos(ang) * 0.35, Math.sin(ang) * 0.35, 1.4);
+          bGroup.add(barrel);
+        }
+      });
+
+      // Dual Micro-Missile Pod Racks
+      [-2.2, 2.2].forEach(x => {
+        const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.2, 8), darkMechMat);
+        pod.rotation.x = Math.PI / 2;
+        pod.position.set(x, 5.8, -0.4);
+        group.add(pod);
+
+        const podGlow = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), glowCyanMat);
+        podGlow.position.set(x, 5.8, 0.25);
+        group.add(podGlow);
+      });
+
+      // Anti-Grav Repulsor Hover Engines below
+      [-1.4, 1.4].forEach(x => {
+        const thruster = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.45, 1.2, 10), darkMechMat);
+        thruster.position.set(x, 2.0, 0);
+        group.add(thruster);
+
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.08, 8, 16), glowCyanMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(x, 1.4, 0);
+        group.add(ring);
+      });
+
+      // Orbiting Hex Shield Plates
+      const shieldGroup = new THREE.Group();
+      shieldGroup.position.y = 4.0;
+      group.add(shieldGroup);
+
+      [-3.8, 3.8].forEach(x => {
+        const shield = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 6), hullMat);
+        shield.rotation.z = Math.PI / 2;
+        shield.position.x = x;
+        shieldGroup.add(shield);
+      });
+
+      group.userData = { barrelsL, barrelsR, reactor, shieldGroup };
+      return group;
+    }
+
+    function createInfernalBehemothBossMesh() {
+      const group = new THREE.Group();
+
+      const magmaCrustMat = new THREE.MeshStandardMaterial({
+        color: 0x450a0a,
+        roughness: 0.6,
+        metalness: 0.3,
+        emissive: 0x991b1b,
+        emissiveIntensity: 0.5
+      });
+      const lavaCoreMat = new THREE.MeshBasicMaterial({ color: 0xf97316 });
+      const hornMat = new THREE.MeshStandardMaterial({ color: 0x1c0505, roughness: 0.4, metalness: 0.6 });
+      const fireMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
+
+      // Massive Curving Magma Drake Body
+      const bodyGeo = new THREE.SphereGeometry(2.6, 18, 18);
+      const body = new THREE.Mesh(bodyGeo, magmaCrustMat);
+      body.position.set(0, 4.4, 0);
+      body.scale.set(1.1, 0.95, 1.35);
+      group.add(body);
+
+      // Glowing Magma Fissure Veins
+      for (let r = 0; r < 3; r++) {
+        const vein = new THREE.Mesh(new THREE.TorusGeometry(2.4 - r * 0.3, 0.08, 8, 24), lavaCoreMat);
+        vein.rotation.x = Math.PI / 2 + (r - 1) * 0.25;
+        vein.position.set(0, 4.4, (r - 1) * 0.8);
+        group.add(vein);
+      }
+
+      // Fierce Draconic Skull
+      const headGroup = new THREE.Group();
+      headGroup.position.set(0, 5.0, 2.5);
+      group.add(headGroup);
+
+      const skullGeo = new THREE.SphereGeometry(1.3, 14, 14);
+      const skull = new THREE.Mesh(skullGeo, magmaCrustMat);
+      skull.scale.set(0.9, 0.8, 1.3);
+      headGroup.add(skull);
+
+      // Glowing Lava Maw
+      const mawGeo = new THREE.ConeGeometry(0.75, 1.2, 8);
+      const maw = new THREE.Mesh(mawGeo, lavaCoreMat);
+      maw.rotation.x = -Math.PI / 2;
+      maw.position.set(0, -0.25, 1.4);
+      headGroup.add(maw);
+
+      // 4 Curved Demon Horns
+      [-0.85, 0.85].forEach(x => {
+        const mainHorn = new THREE.Mesh(new THREE.ConeGeometry(0.35, 2.6, 8), hornMat);
+        mainHorn.rotation.z = x > 0 ? -0.55 : 0.55;
+        mainHorn.rotation.x = -0.45;
+        mainHorn.position.set(x, 1.3, -0.3);
+        headGroup.add(mainHorn);
+
+        const browHorn = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.2, 8), hornMat);
+        browHorn.rotation.z = x > 0 ? -0.35 : 0.35;
+        browHorn.rotation.x = 0.4;
+        browHorn.position.set(x * 0.7, 0.9, 0.8);
+        headGroup.add(browHorn);
+      });
+
+      // Dorsal Volcanic Spikes
+      for (let s = 0; s < 5; s++) {
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.5, 6), hornMat);
+        spike.rotation.x = -0.4;
+        spike.position.set(0, 6.4 - s * 0.25, 0.8 - s * 0.85);
+        group.add(spike);
+      }
+
+      // 4 Orbiting Magma Meteor Comets
+      const meteors = [];
+      for (let m = 0; m < 4; m++) {
+        const meteorGroup = new THREE.Group();
+        group.add(meteorGroup);
+
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.48), magmaCrustMat);
+        meteorGroup.add(rock);
+
+        const fireCorona = new THREE.Mesh(new THREE.SphereGeometry(0.58, 8, 8), fireMat);
+        meteorGroup.add(fireCorona);
+
+        meteors.push(meteorGroup);
+      }
+
+      group.userData = { meteors, headGroup, maw, orbitAngle: 0 };
+      return group;
+    }
+
+    function createLordDemonBossMesh() {
+      const group = new THREE.Group();
+
+      const demonMat = new THREE.MeshStandardMaterial({
+        color: 0x3b0764,
+        roughness: 0.4,
+        metalness: 0.7,
+        emissive: 0x581c87,
+        emissiveIntensity: 0.45
+      });
+      const darkVoidMat = new THREE.MeshStandardMaterial({ color: 0x1f0224, roughness: 0.6, metalness: 0.5 });
+      const purpleGlowMat = new THREE.MeshBasicMaterial({ color: 0xc084fc });
+      const crimsonWingMat = new THREE.MeshStandardMaterial({
+        color: 0x831843,
+        emissive: 0xe11d48,
+        emissiveIntensity: 0.4,
+        side: THREE.DoubleSide
+      });
+
+      // Torso & Upper Body
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.0, 2.8, 12), demonMat);
+      torso.position.y = 4.8;
+      group.add(torso);
+
+      // Crowned Demonic Head
+      const headGroup = new THREE.Group();
+      headGroup.position.set(0, 6.6, 0.3);
+      group.add(headGroup);
+
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.85, 14, 14), darkVoidMat);
+      headGroup.add(skull);
+
+      // Glowing Ethereal Face Mask
+      const faceMask = new THREE.Mesh(new THREE.SphereGeometry(0.86, 12, 12, 0, Math.PI, 0, Math.PI * 0.6), purpleGlowMat);
+      faceMask.rotation.x = -Math.PI / 4;
+      faceMask.position.set(0, 0, 0.1);
+      headGroup.add(faceMask);
+
+      // 6 Horned Crown Spikes
+      [-0.7, -0.4, -0.15, 0.15, 0.4, 0.7].forEach((x, i) => {
+        const hH = (i === 0 || i === 5) ? 1.6 : ((i === 1 || i === 4) ? 1.2 : 0.8);
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.12, hH, 8), darkVoidMat);
+        horn.rotation.z = -x * 0.8;
+        horn.rotation.x = -0.3;
+        horn.position.set(x, 0.7 + hH * 0.4, -0.2);
+        headGroup.add(horn);
+      });
+
+      // Multi-Joint Bat / Dragon Wings
+      const leftWing = new THREE.Group();
+      leftWing.position.set(1.4, 5.6, -0.6);
+      group.add(leftWing);
+
+      const rightWing = new THREE.Group();
+      rightWing.position.set(-1.4, 5.6, -0.6);
+      group.add(rightWing);
+
+      [leftWing, rightWing].forEach((wGroup, idx) => {
+        const sign = idx === 0 ? 1 : -1;
+        const strut1 = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.1, 3.2, 8), darkVoidMat);
+        strut1.rotation.z = sign * 1.1;
+        strut1.position.set(sign * 1.6, 0.8, 0);
+        wGroup.add(strut1);
+
+        const strut2 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.06, 2.6, 8), darkVoidMat);
+        strut2.rotation.z = sign * 0.4;
+        strut2.position.set(sign * 3.4, 1.8, 0);
+        wGroup.add(strut2);
+
+        for (let m = 0; m < 3; m++) {
+          const mem = new THREE.Mesh(new THREE.ConeGeometry(0.9 + m * 0.3, 3.0, 6), crimsonWingMat);
+          mem.rotation.z = sign * (1.3 + m * 0.3);
+          mem.position.set(sign * (1.8 + m * 0.9), 0.2 - m * 0.4, 0);
+          wGroup.add(mem);
+        }
+      });
+
+      // Dark Arcane Summoning Halo
+      const arcaneHalo = new THREE.Group();
+      arcaneHalo.position.set(0, 5.5, -1.2);
+      group.add(arcaneHalo);
+
+      const outerRing = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.08, 8, 36), purpleGlowMat);
+      arcaneHalo.add(outerRing);
+
+      const innerRing = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.06, 8, 28), purpleGlowMat);
+      arcaneHalo.add(innerRing);
+
+      for (let s = 0; s < 6; s++) {
+        const ang = (s / 6) * Math.PI * 2;
+        const sigil = new THREE.Mesh(new THREE.ConeGeometry(0.12, 1.0, 4), purpleGlowMat);
+        sigil.rotation.z = ang;
+        sigil.position.set(Math.cos(ang) * 2.7, Math.sin(ang) * 2.7, 0);
+        arcaneHalo.add(sigil);
+      }
+
+      // Dual Floating Void Blades
+      const voidBlades = [];
+      [-3.4, 3.4].forEach(x => {
+        const bladeGroup = new THREE.Group();
+        bladeGroup.position.set(x, 4.4, 0.6);
+        group.add(bladeGroup);
+
+        const blade = new THREE.Mesh(new THREE.ConeGeometry(0.2, 2.6, 6), purpleGlowMat);
+        blade.scale.set(0.3, 1.0, 1.0);
+        bladeGroup.add(blade);
+        voidBlades.push(bladeGroup);
+      });
+
+      group.userData = { leftWing, rightWing, arcaneHalo, voidBlades };
+      return group;
+    }
+
+    function createOmegaColossusBossMesh() {
+      const group = new THREE.Group();
+
+      const divineGoldMat = new THREE.MeshStandardMaterial({
+        color: 0xd97706,
+        roughness: 0.2,
+        metalness: 0.9,
+        emissive: 0xf59e0b,
+        emissiveIntensity: 0.6
+      });
+      const platinumMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.25, metalness: 0.85 });
+      const cosmicCoreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const celestialBlueMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+      // Central Cosmic Star Singularity Core
+      const coreGeo = new THREE.SphereGeometry(1.6, 24, 24);
+      const starCore = new THREE.Mesh(coreGeo, cosmicCoreMat);
+      starCore.position.y = 5.0;
+      group.add(starCore);
+
+      const coreCorona = new THREE.Mesh(new THREE.SphereGeometry(2.1, 16, 16), new THREE.MeshBasicMaterial({
+        color: 0xf59e0b,
+        transparent: true,
+        opacity: 0.45,
+        wireframe: true
+      }));
+      coreCorona.position.y = 5.0;
+      group.add(coreCorona);
+
+      // 3 Intersecting Celestial Gyroscope Rings (Gold)
+      const gyroRingX = new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.16, 12, 40), divineGoldMat);
+      gyroRingX.position.y = 5.0;
+      group.add(gyroRingX);
+
+      const gyroRingY = new THREE.Mesh(new THREE.TorusGeometry(4.0, 0.14, 12, 40), divineGoldMat);
+      gyroRingY.rotation.x = Math.PI / 2;
+      gyroRingY.position.y = 5.0;
+      group.add(gyroRingY);
+
+      const gyroRingZ = new THREE.Mesh(new THREE.TorusGeometry(4.4, 0.12, 12, 40), divineGoldMat);
+      gyroRingZ.rotation.y = Math.PI / 2;
+      gyroRingZ.position.y = 5.0;
+      group.add(gyroRingZ);
+
+      // Divine Celestial Crown & Face
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.4, 1.2, 8), platinumMat);
+      crown.position.set(0, 7.2, 0);
+      group.add(crown);
+
+      const sunburst = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.08, 8, 24), divineGoldMat);
+      sunburst.position.set(0, 7.6, -0.3);
+      group.add(sunburst);
+
+      // 4 Divine Light Wings
+      const lightWings = [];
+      [-1, 1].forEach(sign => {
+        [0.4, -0.3].forEach((ang, idx) => {
+          const wing = new THREE.Mesh(new THREE.ConeGeometry(0.35, 4.8, 6), divineGoldMat);
+          wing.scale.set(0.2, 1.0, 1.0);
+          wing.rotation.z = sign * (1.1 + idx * 0.4);
+          wing.rotation.y = ang;
+          wing.position.set(sign * 3.2, 5.5 + idx * 0.8, -0.5);
+          group.add(wing);
+          lightWings.push(wing);
+        });
+      });
+
+      // 4 Orbiting Cosmic Prism Relics
+      const prisms = [];
+      for (let p = 0; p < 4; p++) {
+        const prism = new THREE.Mesh(new THREE.OctahedronGeometry(0.55), celestialBlueMat);
+        group.add(prism);
+        prisms.push(prism);
+      }
+
+      group.userData = { starCore, coreCorona, gyroRingX, gyroRingY, gyroRingZ, lightWings, prisms, time: 0 };
+      return group;
+    }
+
     class StageBoss3D {
       constructor(stageData) {
         this.stage = stageData;
@@ -1738,61 +2802,21 @@
         this.mesh = new THREE.Group();
 
         if (stageData.boss.type === 'golem') {
-          // Cyber Golem (Mech Boss)
-          const body = new THREE.Mesh(
-            new THREE.BoxGeometry(4.0, 4.0, 3.0),
-            new THREE.MeshStandardMaterial({ color: 0x0369a1, metalness: 0.9, emissive: 0x38bdf8, emissiveIntensity: 0.3 })
-          );
-          body.position.y = 4.0;
-          this.mesh.add(body);
-
-          const cannonL = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 3.0, 16), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
-          cannonL.rotation.x = Math.PI / 2;
-          cannonL.position.set(2.4, 3.8, 1.0);
-          this.mesh.add(cannonL);
-
-          const cannonR = cannonL.clone();
-          cannonR.position.x = -2.4;
-          this.mesh.add(cannonR);
-
+          this.bossType = 'golem';
+          this.bossMesh = createCyberGolemBossMesh();
+          this.mesh.add(this.bossMesh);
         } else if (stageData.boss.type === 'behemoth') {
-          // Infernal Behemoth (Fire demon beast)
-          const body = new THREE.Mesh(
-            new THREE.SphereGeometry(3.0, 16, 16),
-            new THREE.MeshStandardMaterial({ color: 0x991b1b, emissive: 0xf97316, emissiveIntensity: 0.4 })
-          );
-          body.position.y = 4.5;
-          this.mesh.add(body);
-
-          const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.6, 2.5, 8), new THREE.MeshStandardMaterial({ color: 0x450a0a }));
-          hornL.position.set(1.6, 6.8, 0.5);
-          hornL.rotation.z = -0.4;
-          this.mesh.add(hornL);
-
-          const hornR = hornL.clone();
-          hornR.position.x = -1.6;
-          hornR.rotation.z = 0.4;
-          this.mesh.add(hornR);
-
-        } else if (stageData.boss.type === 'demon' || stageData.boss.type === 'colossus') {
-          // Lord Demon / Omega Colossus (Winged Overlord)
-          const body = new THREE.Mesh(
-            new THREE.SphereGeometry(2.6, 24, 16),
-            new THREE.MeshStandardMaterial({ color: 0x3b0764, emissive: 0xa855f7, emissiveIntensity: 0.4 })
-          );
-          body.position.y = 5.0;
-          this.mesh.add(body);
-
-          const wingGeo = new THREE.BoxGeometry(5.0, 3.5, 0.15);
-          const wingMat = new THREE.MeshStandardMaterial({ color: 0x1f0209, emissive: 0xe11d48, emissiveIntensity: 0.3 });
-
-          this.leftWing = new THREE.Mesh(wingGeo, wingMat);
-          this.leftWing.position.set(4.2, 5.5, -0.6);
-          this.mesh.add(this.leftWing);
-
-          this.rightWing = new THREE.Mesh(wingGeo, wingMat);
-          this.rightWing.position.set(-4.2, 5.5, -0.6);
-          this.mesh.add(this.rightWing);
+          this.bossType = 'behemoth';
+          this.bossMesh = createInfernalBehemothBossMesh();
+          this.mesh.add(this.bossMesh);
+        } else if (stageData.boss.type === 'demon') {
+          this.bossType = 'demon';
+          this.bossMesh = createLordDemonBossMesh();
+          this.mesh.add(this.bossMesh);
+        } else if (stageData.boss.type === 'colossus') {
+          this.bossType = 'colossus';
+          this.bossMesh = createOmegaColossusBossMesh();
+          this.mesh.add(this.bossMesh);
         }
 
         this.mesh.position.set(0, 0, -25);
@@ -1800,10 +2824,55 @@
       }
 
       update(dt) {
-        if (this.leftWing && this.rightWing) {
-          const wingAngle = Math.sin(Date.now() * 0.006) * 0.45;
-          this.leftWing.rotation.y = wingAngle;
-          this.rightWing.rotation.y = -wingAngle;
+        // Dynamic boss model animations
+        if (this.bossMesh && this.bossMesh.userData) {
+          const ud = this.bossMesh.userData;
+          if (this.bossType === 'golem') {
+            ud.barrelsL.rotation.z += dt * 10;
+            ud.barrelsR.rotation.z += dt * 10;
+            if (ud.shieldGroup) ud.shieldGroup.rotation.y += dt * 0.8;
+            if (ud.reactor) ud.reactor.scale.setScalar(1 + Math.sin(Date.now() * 0.008) * 0.08);
+          } else if (this.bossType === 'behemoth') {
+            ud.orbitAngle = (ud.orbitAngle || 0) + dt * 2.5;
+            if (ud.meteors) {
+              ud.meteors.forEach((m, idx) => {
+                const a = ud.orbitAngle + (idx * Math.PI * 2) / 4;
+                m.position.set(Math.cos(a) * 4.6, 4.4 + Math.sin(a * 2) * 0.6, Math.sin(a) * 4.6);
+                m.rotation.x += dt * 3;
+                m.rotation.y += dt * 3;
+              });
+            }
+            if (ud.maw) ud.maw.scale.setScalar(1 + Math.sin(Date.now() * 0.007) * 0.15);
+          } else if (this.bossType === 'demon') {
+            const wingAngle = Math.sin(Date.now() * 0.006) * 0.45;
+            if (ud.leftWing) ud.leftWing.rotation.y = wingAngle;
+            if (ud.rightWing) ud.rightWing.rotation.y = -wingAngle;
+            if (ud.arcaneHalo) ud.arcaneHalo.rotation.z += dt * 1.2;
+            if (ud.voidBlades) {
+              ud.voidBlades.forEach((b, idx) => {
+                b.position.y = 4.4 + Math.sin(Date.now() * 0.005 + idx * Math.PI) * 0.35;
+                b.rotation.y += dt * 2.0;
+              });
+            }
+          } else if (this.bossType === 'colossus') {
+            ud.time = (ud.time || 0) + dt;
+            if (ud.gyroRingX) ud.gyroRingX.rotation.x += dt * 1.4;
+            if (ud.gyroRingY) ud.gyroRingY.rotation.y += dt * 1.1;
+            if (ud.gyroRingZ) ud.gyroRingZ.rotation.z += dt * 0.8;
+            if (ud.starCore) ud.starCore.scale.setScalar(1 + Math.sin(ud.time * 3) * 0.1);
+            if (ud.coreCorona) {
+              ud.coreCorona.rotation.x += dt * 0.5;
+              ud.coreCorona.rotation.y += dt * 0.7;
+            }
+            if (ud.prisms) {
+              ud.prisms.forEach((p, idx) => {
+                const a = ud.time * 1.8 + (idx * Math.PI * 2) / 4;
+                p.position.set(Math.cos(a) * 5.2, 5.0 + Math.sin(a * 2) * 0.8, Math.sin(a) * 5.2);
+                p.rotation.x += dt * 2.5;
+                p.rotation.y += dt * 2.5;
+              });
+            }
+          }
         }
 
         this.mesh.position.y = Math.sin(Date.now() * 0.003) * 0.8;
@@ -2063,6 +3132,7 @@
       input.keys[e.code] = true;
       if (e.code === 'Space') input.dashPressed = true;
       if (e.code === 'KeyQ') input.nukePressed = true;
+      if (e.code === 'KeyV') toggleCameraView();
       if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
     });
 
@@ -2354,14 +3424,20 @@
           b.className = `w-9 h-9 rounded-full border-2 transition-all duration-150 transform hover:scale-110 shadow-md ${COSTUMES[idx].id === c.id ? 'border-white scale-110 ring-2 ring-sky-400' : 'border-transparent opacity-80'}`;
         });
 
-        previewScene.remove(previewGun);
-        previewGun = createCyberGunMesh(c.hex);
-        previewScene.add(previewGun);
+        previewScene.remove(previewCharacter);
+        previewCharacter = createCyberCharacterMesh(c.hex, false);
+        previewScene.add(previewCharacter);
 
         camera.remove(playerGun);
         playerGun = createCyberGunMesh(c.hex);
         playerGun.position.set(0.32, -0.26, -0.6);
         camera.add(playerGun);
+
+        cameraRig.remove(player3DCharacter);
+        player3DCharacter = createCyberCharacterMesh(c.hex, false);
+        player3DCharacter.rotation.y = Math.PI;
+        player3DCharacter.visible = isThirdPerson;
+        cameraRig.add(player3DCharacter);
 
         sound.play('pickup');
       });
